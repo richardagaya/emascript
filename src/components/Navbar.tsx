@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const { data: session, status } = useSession();
 
   function toggleMenu() {
     setIsOpen((prev) => !prev);
@@ -39,7 +41,27 @@ export default function Navbar() {
           <a href="#products" className="hover:underline">Products</a>
           <a href="#pricing" className="hover:underline">Pricing</a>
           <a href="#faq" className="hover:underline">FAQ</a>
-          <a href="#buy" className="rounded-full bg-foreground text-background px-4 py-2 font-medium hover:opacity-90">Buy now</a>
+          {status === "authenticated" ? (
+            <>
+              <a href="/dashboard" className="hover:underline">Dashboard</a>
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="rounded-full border border-black/[.08] dark:border-white/[.145] px-4 py-2 font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06]"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <>
+              <a href="#buy" className="rounded-full bg-foreground text-background px-4 py-2 font-medium hover:opacity-90">Buy now</a>
+              <button
+                onClick={() => signIn()}
+                className="rounded-full border border-black/[.08] dark:border-white/[.145] px-4 py-2 font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06]"
+              >
+                Sign in
+              </button>
+            </>
+          )}
         </nav>
       </div>
 
@@ -54,13 +76,33 @@ export default function Navbar() {
           <a href="#products" className="hover:underline" onClick={closeMenu}>Products</a>
           <a href="#pricing" className="hover:underline" onClick={closeMenu}>Pricing</a>
           <a href="#faq" className="hover:underline" onClick={closeMenu}>FAQ</a>
-          <a
-            href="#buy"
-            className="rounded-full bg-foreground text-background px-4 py-2 font-medium hover:opacity-90 text-center"
-            onClick={closeMenu}
-          >
-            Buy now
-          </a>
+          {status === "authenticated" ? (
+            <>
+              <a href="/dashboard" className="hover:underline" onClick={closeMenu}>Dashboard</a>
+              <button
+                onClick={() => { signOut({ callbackUrl: "/" }); closeMenu(); }}
+                className="rounded-full border border-black/[.08] dark:border-white/[.145] px-4 py-2 font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06] text-center"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <>
+              <a
+                href="#buy"
+                className="rounded-full bg-foreground text-background px-4 py-2 font-medium hover:opacity-90 text-center"
+                onClick={closeMenu}
+              >
+                Buy now
+              </a>
+              <button
+                onClick={() => { signIn(); closeMenu(); }}
+                className="rounded-full border border-black/[.08] dark:border-white/[.145] px-4 py-2 font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06] text-center"
+              >
+                Sign in
+              </button>
+            </>
+          )}
         </nav>
       </div>
     </header>
