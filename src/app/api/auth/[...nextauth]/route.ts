@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 
@@ -7,7 +7,7 @@ const credentialsSchema = z.object({
   password: z.string().min(6),
 });
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     Credentials({
       name: "Email and Password",
@@ -42,7 +42,7 @@ export const authOptions = {
   pages: { signIn: "/login" },
 };
 
-const handler = NextAuth(authOptions as any);
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
 
 
