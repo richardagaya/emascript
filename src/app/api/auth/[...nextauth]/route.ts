@@ -2,6 +2,10 @@ import NextAuth, { NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 
+// Firebase REST API endpoints and expected env vars
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY as string | undefined;
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID as string | undefined;
+
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
@@ -19,27 +23,80 @@ export const authOptions: NextAuthOptions = {
         const parsed = credentialsSchema.safeParse(rawCredentials ?? {});
         if (!parsed.success) return null;
 
-        const { email, password } = parsed.data;
-
-        // Demo user. Replace with real user lookup and password check.
-        const demoUser = {
-          id: "1",
-          email: "demo@example.com",
-          name: "Demo User",
-          // NOT USED: add password hashing in a real app
-          password: "password123",
-        } as const;
-
-        if (email === demoUser.email && password === demoUser.password) {
-          return { id: demoUser.id, email: demoUser.email, name: demoUser.name };
+        if (!FIREBASE_API_KEY) {
+          console.error("Missing FIREBASE_API_KEY env var");
+          return null;
         }
 
-        return null;
+        const { email, password } = parsed.data;
+
+        try {
+          const resp = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, password, returnSecureToken: true }),
+            }
+          );
+
+          if (!resp.ok) {
+            return null;
+          }
+
+          const data: {
+            localId: string;
+            email: string;
+            idToken: string;
+            refreshToken: string;
+            displayName?: string;
+            expiresIn: string; // seconds
+          } = await resp.json();
+
+          return {
+            id: data.localId,
+            email: data.email,
+            name: data.displayName ?? null,
+            // Expose tokens for JWT callback via user object
+            firebaseIdToken: data.idToken,
+            firebaseRefreshToken: data.refreshToken,
+            firebaseTokenExpiresInSeconds: Number(data.expiresIn),
+          } as unknown as any;
+        } catch (e) {
+          console.error("Firebase signInWithPassword failed", e);
+          return null;
+        }
       },
     }),
   ],
   session: { strategy: "jwt" as const },
   pages: { signIn: "/login" },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        // Initial sign in, persist Firebase identity
+        const u = user as unknown as {
+          id?: string;
+          firebaseIdToken?: string;
+          firebaseRefreshToken?: string;
+          firebaseTokenExpiresInSeconds?: number;
+        };
+        token.uid = u.id;
+        token.firebaseIdToken = u.firebaseIdToken;
+        token.firebaseRefreshToken = u.firebaseRefreshToken;
+        if (u.firebaseTokenExpiresInSeconds) {
+          token.firebaseIdTokenExpiresAt = Date.now() + u.firebaseTokenExpiresInSeconds * 1000;
+        }
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // surface uid and idToken on session for client use
+      (session.user as any).uid = (token as any).uid;
+      (session as any).firebaseIdToken = (token as any).firebaseIdToken;
+      return session;
+    },
+  },
 };
 
 const handler = NextAuth(authOptions);

@@ -1,11 +1,46 @@
 "use client";
 
-import { useState } from "react";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useEffect, useMemo, useState } from "react";
+import { onAuthStateChanged, signOut as fbSignOut } from "firebase/auth";
+import { getFirebaseAuth } from "@/lib/firebaseClient";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const { data: session, status } = useSession();
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const auth = getFirebaseAuth();
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!isMounted) return;
+      if (user) {
+        setIsAuthed(true);
+        setDisplayName(user.displayName || user.email || null);
+        setPhotoURL(user.photoURL || null);
+        // Ensure cookie is present if page loaded directly while logged in
+        try {
+          await fetch("/api/session", { method: "GET" });
+        } catch {}
+      } else {
+        setIsAuthed(false);
+        setDisplayName(null);
+        setPhotoURL(null);
+      }
+    });
+    return () => {
+      isMounted = false;
+      unsub();
+    };
+  }, []);
+
+  const firstName = useMemo(() => {
+    if (!displayName) return null;
+    const namePart = displayName.includes("@") ? displayName.split("@")[0] : displayName;
+    const first = namePart.split(" ")[0];
+    return first;
+  }, [displayName]);
 
   function toggleMenu() {
     setIsOpen((prev) => !prev);
@@ -38,14 +73,25 @@ export default function Navbar() {
           )}
         </button>
         <nav className="hidden sm:flex items-center gap-6 text-sm">
-          <a href="#products" className="hover:underline">Products</a>
-          <a href="#pricing" className="hover:underline">Pricing</a>
+          <a href="/marketplace" className="hover:underline">Marketplace</a>
           <a href="#faq" className="hover:underline">FAQ</a>
-          {status === "authenticated" ? (
+          {isAuthed ? (
             <>
               <a href="/dashboard" className="hover:underline">Dashboard</a>
+              <div className="flex items-center gap-2">
+                {photoURL ? (
+                  <img src={photoURL} alt="avatar" className="h-6 w-6 rounded-full" />
+                ) : (
+                  <div className="h-6 w-6 rounded-full bg-black/10 dark:bg-white/20" />
+                )}
+                <span className="text-sm opacity-80">{firstName || "Account"}</span>
+              </div>
               <button
-                onClick={() => signOut({ callbackUrl: "/" })}
+                onClick={async () => {
+                  try { await fbSignOut(getFirebaseAuth()); } catch {}
+                  await fetch("/api/session", { method: "DELETE" });
+                  location.href = "/";
+                }}
                 className="rounded-full border border-black/[.08] dark:border-white/[.145] px-4 py-2 font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06]"
               >
                 Sign out
@@ -54,12 +100,12 @@ export default function Navbar() {
           ) : (
             <>
               <a href="#buy" className="rounded-full bg-foreground text-background px-4 py-2 font-medium hover:opacity-90">Buy now</a>
-              <button
-                onClick={() => signIn()}
+              <a
+                href="/login"
                 className="rounded-full border border-black/[.08] dark:border-white/[.145] px-4 py-2 font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06]"
               >
                 Sign in
-              </button>
+              </a>
             </>
           )}
         </nav>
@@ -73,14 +119,26 @@ export default function Navbar() {
         aria-hidden={!isOpen}
       >
         <nav className="mx-auto max-w-6xl px-4 sm:px-6 py-3 flex flex-col gap-3 text-sm">
-          <a href="#products" className="hover:underline" onClick={closeMenu}>Products</a>
-          <a href="#pricing" className="hover:underline" onClick={closeMenu}>Pricing</a>
+          <a href="/marketplace" className="hover:underline" onClick={closeMenu}>Marketplace</a>
           <a href="#faq" className="hover:underline" onClick={closeMenu}>FAQ</a>
-          {status === "authenticated" ? (
+          {isAuthed ? (
             <>
               <a href="/dashboard" className="hover:underline" onClick={closeMenu}>Dashboard</a>
+              <div className="flex items-center gap-2">
+                {photoURL ? (
+                  <img src={photoURL} alt="avatar" className="h-6 w-6 rounded-full" />
+                ) : (
+                  <div className="h-6 w-6 rounded-full bg-black/10 dark:bg-white/20" />
+                )}
+                <span className="text-sm opacity-80">{firstName || "Account"}</span>
+              </div>
               <button
-                onClick={() => { signOut({ callbackUrl: "/" }); closeMenu(); }}
+                onClick={async () => {
+                  try { await fbSignOut(getFirebaseAuth()); } catch {}
+                  await fetch("/api/session", { method: "DELETE" });
+                  closeMenu();
+                  location.href = "/";
+                }}
                 className="rounded-full border border-black/[.08] dark:border-white/[.145] px-4 py-2 font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06] text-center"
               >
                 Sign out
@@ -95,12 +153,13 @@ export default function Navbar() {
               >
                 Buy now
               </a>
-              <button
-                onClick={() => { signIn(); closeMenu(); }}
+              <a
+                href="/login"
                 className="rounded-full border border-black/[.08] dark:border-white/[.145] px-4 py-2 font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06] text-center"
+                onClick={closeMenu}
               >
                 Sign in
-              </button>
+              </a>
             </>
           )}
         </nav>

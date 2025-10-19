@@ -16,6 +16,28 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Firebase Authentication (No NextAuth)
+
+This project uses Firebase Auth directly with an HttpOnly cookie to protect routes.
+
+### Setup
+
+1. Create a Firebase project and enable Email/Password sign-in.
+2. Create a Web App in Firebase to obtain config values.
+3. Add the following env vars to `.env.local`:
+
+```
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+```
+
+### Usage
+
+- Go to `/login`, sign in with your Firebase email/password.
+- A secure HttpOnly cookie (`fb_token`) is set via `/api/session`.
+- The middleware guards `/dashboard` by checking that cookie.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

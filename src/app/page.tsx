@@ -16,13 +16,13 @@ export default function Home() {
             </p>
             <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
               <a
-                href="#pricing"
+                href="/marketplace"
                 className="rounded-full bg-foreground text-background px-5 py-3 text-sm font-medium hover:opacity-90 text-center"
               >
-                View pricing
+                View marketplace
               </a>
               <a
-                href="#products"
+                href="/marketplace"
                 className="rounded-full border border-black/[.08] dark:border-white/[.145] px-5 py-3 text-sm font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06] text-center"
               >
                 Explore bots
@@ -41,73 +41,43 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Products */}
-      <section id="products" className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-16">
-        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">Popular EAs</h2>
-        <div className="mt-8 grid gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            { name: "TrendRider EA", desc: "Follows medium-term trends with ATR risk.", price: 199 },
-            { name: "ScalpSwift EA", desc: "High-frequency scalper with spread filter.", price: 149 },
-            { name: "MeanRevert Pro", desc: "Reversion strategy with dynamic grids.", price: 179 },
-          ].map((p) => (
-            <div key={p.name} className="rounded-xl border border-black/[.08] dark:border-white/[.145] p-5">
-              <div className="h-36 rounded-lg bg-black/[.04] dark:bg-white/[.06] flex items-center justify-center text-sm text-black/60 dark:text-white/60">
-                Preview image
-              </div>
-              <h3 className="mt-4 font-semibold">{p.name}</h3>
-              <p className="mt-1 text-sm text-black/70 dark:text-white/70">{p.desc}</p>
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-base font-medium">${p.price}</span>
-                <a
-                  href="#buy"
-                  className="rounded-full bg-foreground text-background px-4 py-2 text-xs font-medium hover:opacity-90"
-                >
-                  Buy now
-                </a>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-16">
-        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">Simple pricing</h2>
-        <div className="mt-8 grid gap-5 sm:gap-6 sm:grid-cols-3">
+      {/* Testimonials */}
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-16">
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-center">What Our Users Say</h2>
+        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {[
             {
-              tier: "Starter",
-              price: 99,
-              features: ["1 EA license", "Email support", "Setup guide"],
+              name: "Sarah Chen",
+              role: "Forex Trader",
+              content: "The TrendRider EA has been a game-changer for my trading. Consistent profits with minimal drawdown.",
+              rating: 5
             },
             {
-              tier: "Pro",
-              price: 199,
-              features: ["3 EA licenses", "Priority support", "Optimization tips"],
+              name: "Michael Rodriguez",
+              role: "Day Trader",
+              content: "ScalpSwift EA works perfectly during volatile sessions. The spread filter is incredibly effective.",
+              rating: 5
             },
             {
-              tier: "Ultimate",
-              price: 299,
-              features: ["Unlimited licenses", "1:1 onboarding", "Lifetime updates"],
-            },
-          ].map((plan) => (
-            <div key={plan.tier} className="rounded-xl border border-black/[.08] dark:border-white/[.145] p-6 flex flex-col">
-              <h3 className="font-semibold">{plan.tier}</h3>
-              <div className="mt-2 text-3xl font-semibold">${plan.price}</div>
-              <ul className="mt-4 space-y-2 text-sm text-black/70 dark:text-white/70">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-foreground" />
-                    {f}
-                  </li>
+              name: "David Kim",
+              role: "Swing Trader",
+              content: "MeanRevert Pro caught some amazing reversals. The dynamic grid management is brilliant.",
+              rating: 5
+            }
+          ].map((testimonial) => (
+            <div key={testimonial.name} className="rounded-xl border border-black/[.08] dark:border-white/[.145] p-6">
+              <div className="flex items-center mb-4">
+                {[...Array(testimonial.rating)].map((_, i) => (
+                  <svg key={i} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
                 ))}
-              </ul>
-              <a
-                href="#buy"
-                className="mt-6 rounded-full bg-foreground text-background px-5 py-3 text-sm font-medium hover:opacity-90 text-center"
-              >
-                Choose {plan.tier}
-              </a>
+              </div>
+              <p className="text-sm text-black/70 dark:text-white/70 mb-4">"{testimonial.content}"</p>
+              <div>
+                <div className="font-medium text-sm">{testimonial.name}</div>
+                <div className="text-xs text-black/60 dark:text-white/60">{testimonial.role}</div>
+              </div>
             </div>
           ))}
         </div>
