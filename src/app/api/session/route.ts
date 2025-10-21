@@ -5,7 +5,8 @@ import { NextRequest } from "next/server";
 const COOKIE_NAME = "fb_token";
 
 export async function GET() {
-  const token = cookies().get(COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
   if (token) return new Response(null, { status: 204 });
   return new Response(null, { status: 401 });
 }
@@ -15,7 +16,8 @@ export async function POST(req: NextRequest) {
   if (!idToken || typeof idToken !== "string") {
     return new Response("Bad Request", { status: 400 });
   }
-  cookies().set({
+  const cookieStore = await cookies();
+  cookieStore.set({
     name: COOKIE_NAME,
     value: idToken,
     httpOnly: true,
@@ -28,7 +30,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE() {
-  cookies().delete(COOKIE_NAME);
+  const cookieStore = await cookies();
+  cookieStore.delete(COOKIE_NAME);
   return new Response(null, { status: 204 });
 }
 

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import AccordionFAQ from "@/components/AccordionFAQ";
 
 export default function Home() {
   return (
@@ -21,15 +22,10 @@ export default function Home() {
               >
                 View marketplace
               </a>
-              <a
-                href="/marketplace"
-                className="rounded-full border border-black/[.08] dark:border-white/[.145] px-5 py-3 text-sm font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06] text-center"
-              >
-                Explore bots
-              </a>
+             
             </div>
             <div className="mt-6 text-xs text-black/60 dark:text-white/60">
-              Works with MT4/MT5. No subscription lock-in.
+              Works with MT4/MT5.
             </div>
           </div>
           <div className="relative aspect-video w-full rounded-xl border border-black/[.08] dark:border-white/[.145] bg-[radial-gradient(circle_at_30%_30%,rgba(0,0,0,0.05),transparent_60%)] dark:bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.08),transparent_60%)] flex items-center justify-center">
@@ -85,32 +81,15 @@ export default function Home() {
 
       {/* FAQ */}
       <section id="faq" className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-16">
-        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">FAQ</h2>
-        <div className="mt-6 grid gap-6 sm:grid-cols-2">
-          {[
-            {
-              q: "Which platforms are supported?",
-              a: "Our bots support MT4 and MT5 with standard brokers.",
-            },
-            {
-              q: "Is there a refund policy?",
-              a: "Yes, 14-day refund if not satisfied. Terms apply.",
-            },
-            {
-              q: "Do I get updates?",
-              a: "Lifetime updates included for purchased licenses.",
-            },
-            {
-              q: "Can I use on multiple accounts?",
-              a: "Depends on license tier; see pricing above.",
-            },
-          ].map((item) => (
-            <div key={item.q} className="rounded-xl border border-black/[.08] dark:border-white/[.145] p-5">
-              <h3 className="font-medium">{item.q}</h3>
-              <p className="mt-2 text-sm text-black/70 dark:text-white/70">{item.a}</p>
-            </div>
-          ))}
-        </div>
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-6">FAQ</h2>
+        <AccordionFAQ
+          items={[
+            { q: "Which platforms are supported?", a: "Our bots support MT4 and MT5 with standard brokers." },
+            { q: "Is there a refund policy?", a: "Yes, 14-day refund if not satisfied. Terms apply." },
+            { q: "Do I get updates?", a: "Lifetime updates included for purchased licenses." },
+            { q: "Can I use on multiple accounts?", a: "Depends on license tier; see pricing above." },
+          ]}
+        />
       </section>
     </div>
   );

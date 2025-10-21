@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { onAuthStateChanged, signOut as fbSignOut } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
+import { useAtom } from "jotai";
+import { authStateAtom, mobileMenuOpenAtom } from "@/state/atoms";
 
 export default function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
-  const [displayName, setDisplayName] = useState<string | null>(null);
-  const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useAtom(mobileMenuOpenAtom);
+  const [authState, setAuthState] = useAtom(authStateAtom);
 
   useEffect(() => {
     let isMounted = true;
@@ -16,17 +16,17 @@ export default function Navbar() {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (!isMounted) return;
       if (user) {
-        setIsAuthed(true);
-        setDisplayName(user.displayName || user.email || null);
-        setPhotoURL(user.photoURL || null);
+        setAuthState({
+          isAuthed: true,
+          displayName: user.displayName || user.email || null,
+          photoURL: user.photoURL || null,
+        });
         // Ensure cookie is present if page loaded directly while logged in
         try {
           await fetch("/api/session", { method: "GET" });
         } catch {}
       } else {
-        setIsAuthed(false);
-        setDisplayName(null);
-        setPhotoURL(null);
+        setAuthState({ isAuthed: false, displayName: null, photoURL: null });
       }
     });
     return () => {
@@ -36,11 +36,11 @@ export default function Navbar() {
   }, []);
 
   const firstName = useMemo(() => {
-    if (!displayName) return null;
-    const namePart = displayName.includes("@") ? displayName.split("@")[0] : displayName;
+    if (!authState.displayName) return null;
+    const namePart = authState.displayName.includes("@") ? authState.displayName.split("@")[0] : authState.displayName;
     const first = namePart.split(" ")[0];
     return first;
-  }, [displayName]);
+  }, [authState.displayName]);
 
   function toggleMenu() {
     setIsOpen((prev) => !prev);
@@ -75,12 +75,12 @@ export default function Navbar() {
         <nav className="hidden sm:flex items-center gap-6 text-sm">
           <a href="/marketplace" className="hover:underline">Marketplace</a>
           <a href="#faq" className="hover:underline">FAQ</a>
-          {isAuthed ? (
+          {authState.isAuthed ? (
             <>
               <a href="/dashboard" className="hover:underline">Dashboard</a>
               <div className="flex items-center gap-2">
-                {photoURL ? (
-                  <img src={photoURL} alt="avatar" className="h-6 w-6 rounded-full" />
+                {authState.photoURL ? (
+                  <img src={authState.photoURL} alt="avatar" className="h-6 w-6 rounded-full" />
                 ) : (
                   <div className="h-6 w-6 rounded-full bg-black/10 dark:bg-white/20" />
                 )}
@@ -121,12 +121,12 @@ export default function Navbar() {
         <nav className="mx-auto max-w-6xl px-4 sm:px-6 py-3 flex flex-col gap-3 text-sm">
           <a href="/marketplace" className="hover:underline" onClick={closeMenu}>Marketplace</a>
           <a href="#faq" className="hover:underline" onClick={closeMenu}>FAQ</a>
-          {isAuthed ? (
+          {authState.isAuthed ? (
             <>
               <a href="/dashboard" className="hover:underline" onClick={closeMenu}>Dashboard</a>
               <div className="flex items-center gap-2">
-                {photoURL ? (
-                  <img src={photoURL} alt="avatar" className="h-6 w-6 rounded-full" />
+                {authState.photoURL ? (
+                  <img src={authState.photoURL} alt="avatar" className="h-6 w-6 rounded-full" />
                 ) : (
                   <div className="h-6 w-6 rounded-full bg-black/10 dark:bg-white/20" />
                 )}
