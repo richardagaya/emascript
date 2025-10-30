@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, signOut as fbSignOut } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { useAtom } from "jotai";
@@ -9,6 +9,7 @@ import { authStateAtom, mobileMenuOpenAtom } from "@/state/atoms";
 export default function Navbar() {
   const [isOpen, setIsOpen] = useAtom(mobileMenuOpenAtom);
   const [authState, setAuthState] = useAtom(authStateAtom);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -21,6 +22,7 @@ export default function Navbar() {
           displayName: user.displayName || user.email || null,
           photoURL: user.photoURL || null,
         });
+        setImageError(false); // Reset image error on new user
         // Ensure cookie is present if page loaded directly while logged in
         try {
           await fetch("/api/session", { method: "GET" });
@@ -33,7 +35,7 @@ export default function Navbar() {
       isMounted = false;
       unsub();
     };
-  }, []);
+  }, [setAuthState]);
 
   const firstName = useMemo(() => {
     if (!authState.displayName) return null;
@@ -54,7 +56,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-black/[.08] dark:border-white/[.145] bg-white/80 dark:bg-black/50 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-sm">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
         <a href="/" className="font-semibold text-base sm:text-lg tracking-tight">
-          EA Bots
+          Akavanta
         </a>
         <button
           aria-label="Toggle menu"
@@ -79,8 +81,14 @@ export default function Navbar() {
             <>
               <a href="/dashboard" className="hover:underline">Dashboard</a>
               <div className="flex items-center gap-2">
-                {authState.photoURL ? (
-                  <img src={authState.photoURL} alt="avatar" className="h-6 w-6 rounded-full" />
+                {authState.photoURL && !imageError ? (
+                  <img 
+                    src={authState.photoURL} 
+                    alt="avatar" 
+                    className="h-6 w-6 rounded-full object-cover"
+                    onError={() => setImageError(true)}
+                    referrerPolicy="no-referrer"
+                  />
                 ) : (
                   <div className="h-6 w-6 rounded-full bg-black/10 dark:bg-white/20" />
                 )}
@@ -125,8 +133,14 @@ export default function Navbar() {
             <>
               <a href="/dashboard" className="hover:underline" onClick={closeMenu}>Dashboard</a>
               <div className="flex items-center gap-2">
-                {authState.photoURL ? (
-                  <img src={authState.photoURL} alt="avatar" className="h-6 w-6 rounded-full" />
+                {authState.photoURL && !imageError ? (
+                  <img 
+                    src={authState.photoURL} 
+                    alt="avatar" 
+                    className="h-6 w-6 rounded-full object-cover"
+                    onError={() => setImageError(true)}
+                    referrerPolicy="no-referrer"
+                  />
                 ) : (
                   <div className="h-6 w-6 rounded-full bg-black/10 dark:bg-white/20" />
                 )}

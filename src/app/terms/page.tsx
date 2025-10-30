@@ -11,7 +11,7 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4">1. Acceptance of Terms</h2>
           <p className="text-black/70 dark:text-white/70 mb-4">
-            By accessing and using EA Bots ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+            By accessing and using Akavanta ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
           </p>
         </section>
 
@@ -31,14 +31,14 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4">3. Disclaimer</h2>
           <p className="text-black/70 dark:text-white/70 mb-4">
-            The materials on EA Bots are provided on an 'as is' basis. EA Bots makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
+            The materials on Akavanta are provided on an 'as is' basis. Akavanta makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
           </p>
         </section>
 
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4">4. Limitations</h2>
           <p className="text-black/70 dark:text-white/70 mb-4">
-            In no event shall EA Bots or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on EA Bots, even if EA Bots or an authorized representative has been notified orally or in writing of the possibility of such damage. Because some jurisdictions do not allow limitations on implied warranties, or limitations of liability for consequential or incidental damages, these limitations may not apply to you.
+            In no event shall Akavanta or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on Akavanta, even if Akavanta or an authorized representative has been notified orally or in writing of the possibility of such damage. Because some jurisdictions do not allow limitations on implied warranties, or limitations of liability for consequential or incidental damages, these limitations may not apply to you.
           </p>
         </section>
 
@@ -50,20 +50,12 @@ export default function TermsPage() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">6. Refund Policy</h2>
-          <p className="text-black/70 dark:text-white/70 mb-4">
-            We offer a 14-day refund policy from the date of purchase. Refunds are processed within 5-7 business days. To request a refund, please contact our support team with your order details.
-          </p>
-        </section>
-
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">7. Contact Information</h2>
+          <h2 className="text-xl font-semibold mb-4">6. Contact Information</h2>
           <p className="text-black/70 dark:text-white/70 mb-4">
             If you have any questions about these Terms of Service, please contact us at:
           </p>
           <p className="text-black/70 dark:text-white/70">
-            Email: support@eabots.com<br />
-            Address: [Your Business Address]
+            Email: support@akavanta.com
           </p>
         </section>
       </div>

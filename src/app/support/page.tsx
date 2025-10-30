@@ -9,9 +9,9 @@ export default function SupportPage() {
         <div className="rounded-xl border border-black/[.08] dark:border-white/[.145] p-6">
           <h2 className="text-xl font-semibold mb-4">Contact Us</h2>
           <div className="space-y-3 text-black/70 dark:text-white/70">
-            <p><strong>Email:</strong> support@eabots.com</p>
-            <p><strong>Response Time:</strong> Within 24 hours</p>
-            <p><strong>Business Hours:</strong> Monday - Friday, 9 AM - 6 PM EST</p>
+            <p><strong>Email:</strong> support@akavanta.com</p>
+            <p><strong>Response Time:</strong> Immediately</p>
+            <p><strong>Business Hours:</strong> Monday - Friday, 7 AM - 5 PM</p>
           </div>
         </div>
 
@@ -32,7 +32,6 @@ export default function SupportPage() {
             { q: "How do I install an EA?", a: "Download from your dashboard, copy to MT4/MT5 Experts, restart, and attach to chart." },
             { q: "What brokers are supported?", a: "Most standard MT4/MT5 brokers. Prefer low spreads and reliable execution." },
             { q: "Can I use EAs on multiple accounts?", a: "Starter: 1 account, Pro: 3 accounts, Ultimate: unlimited." },
-            { q: "What if an EA doesn't work as expected?", a: "We offer a 14-day refund policy. Contact support with your order details." },
             { q: "Do you provide updates?", a: "Yes, lifetime updates are included for purchases." },
             { q: "Recommended account size?", a: "Depends on risk. Generally $1,000+ conservative, $5,000+ aggressive." },
           ]}
@@ -75,7 +74,7 @@ export default function SupportPage() {
           Can't find what you're looking for? Our support team is here to help you succeed with your trading automation.
         </p>
         <a 
-          href="mailto:support@eabots.com"
+          href="mailto:support@akavanta.com"
           className="inline-flex items-center rounded-full bg-foreground text-background px-6 py-3 font-medium hover:opacity-90"
         >
           Contact Support

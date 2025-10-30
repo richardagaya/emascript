@@ -1,0 +1,291 @@
+/* Premium Phone Input Styling */
+
+.premium-phone-container {
+  width: 100%;
+}
+
+/* Input field styling */
+.premium-phone-input {
+  width: 100% !important;
+  height: 48px !important;
+  padding-left: 56px !important;
+  font-size: 16px !important;
+  border: 1px solid rgb(156 163 175) !important;
+  border-radius: 0.5rem !important;
+  background: white !important;
+  color: rgb(31 41 55) !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+}
+
+.premium-phone-input:hover {
+  border-color: rgb(107 114 128) !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1) !important;
+}
+
+.premium-phone-input:focus {
+  outline: none !important;
+  border-color: rgb(59 130 246) !important;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1), 0 1px 3px 0 rgb(0 0 0 / 0.1) !important;
+}
+
+/* Dark mode input */
+@media (prefers-color-scheme: dark) {
+  .premium-phone-input {
+    background: rgb(31 41 55) !important;
+    color: rgb(243 244 246) !important;
+    border-color: rgb(75 85 99) !important;
+  }
+
+  .premium-phone-input:hover {
+    border-color: rgb(107 114 128) !important;
+  }
+
+  .premium-phone-input:focus {
+    border-color: rgb(96 165 250) !important;
+    box-shadow: 0 0 0 3px rgb(96 165 250 / 0.15), 0 1px 3px 0 rgb(0 0 0 / 0.3) !important;
+  }
+}
+
+/* Country selector button */
+.premium-phone-button {
+  height: 48px !important;
+  border: 1px solid rgb(156 163 175) !important;
+  border-right: none !important;
+  border-radius: 0.5rem 0 0 0.5rem !important;
+  background: white !important;
+  transition: all 0.2s ease !important;
+  padding: 0 12px !important;
+}
+
+.premium-phone-button:hover {
+  background: rgb(249 250 251) !important;
+  border-color: rgb(107 114 128) !important;
+}
+
+.premium-phone-button:focus {
+  outline: none !important;
+  border-color: rgb(59 130 246) !important;
+  background: rgb(239 246 255) !important;
+}
+
+/* Dark mode button */
+@media (prefers-color-scheme: dark) {
+  .premium-phone-button {
+    background: rgb(31 41 55) !important;
+    border-color: rgb(75 85 99) !important;
+  }
+
+  .premium-phone-button:hover {
+    background: rgb(55 65 81) !important;
+    border-color: rgb(107 114 128) !important;
+  }
+
+  .premium-phone-button:focus {
+    background: rgb(30 58 138 / 0.3) !important;
+    border-color: rgb(96 165 250) !important;
+  }
+}
+
+/* Dropdown menu */
+.premium-phone-dropdown {
+  border-radius: 0.75rem !important;
+  border: 1px solid rgb(209 213 219) !important;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important;
+  background: white !important;
+  margin-top: 8px !important;
+  overflow: hidden !important;
+  max-height: 320px !important;
+  animation: slideDown 0.2s ease-out !important;
+}
+
+/* Dark mode dropdown */
+@media (prefers-color-scheme: dark) {
+  .premium-phone-dropdown {
+    background: rgb(31 41 55) !important;
+    border-color: rgb(75 85 99) !important;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.3) !important;
+  }
+}
+
+/* Search input in dropdown */
+.premium-phone-search {
+  width: calc(100% - 24px) !important;
+  margin: 12px !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgb(209 213 219) !important;
+  border-radius: 0.5rem !important;
+  font-size: 14px !important;
+  background: rgb(249 250 251) !important;
+  color: rgb(31 41 55) !important;
+  transition: all 0.2s ease !important;
+}
+
+.premium-phone-search:focus {
+  outline: none !important;
+  border-color: rgb(59 130 246) !important;
+  background: white !important;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1) !important;
+}
+
+.premium-phone-search::placeholder {
+  color: rgb(156 163 175) !important;
+}
+
+/* Dark mode search */
+@media (prefers-color-scheme: dark) {
+  .premium-phone-search {
+    background: rgb(55 65 81) !important;
+    border-color: rgb(75 85 99) !important;
+    color: rgb(243 244 246) !important;
+  }
+
+  .premium-phone-search:focus {
+    background: rgb(31 41 55) !important;
+    border-color: rgb(96 165 250) !important;
+    box-shadow: 0 0 0 3px rgb(96 165 250 / 0.15) !important;
+  }
+
+  .premium-phone-search::placeholder {
+    color: rgb(107 114 128) !important;
+  }
+}
+
+/* Country list items */
+.premium-phone-dropdown .country {
+  padding: 12px 16px !important;
+  font-size: 15px !important;
+  transition: all 0.15s ease !important;
+  cursor: pointer !important;
+  border-bottom: 1px solid rgb(243 244 246) !important;
+}
+
+.premium-phone-dropdown .country:last-child {
+  border-bottom: none !important;
+}
+
+.premium-phone-dropdown .country:hover {
+  background: rgb(239 246 255) !important;
+}
+
+.premium-phone-dropdown .country.highlight {
+  background: rgb(219 234 254) !important;
+}
+
+/* Dark mode list items */
+@media (prefers-color-scheme: dark) {
+  .premium-phone-dropdown .country {
+    border-bottom-color: rgb(55 65 81) !important;
+    color: rgb(243 244 246) !important;
+  }
+
+  .premium-phone-dropdown .country:hover {
+    background: rgb(55 65 81) !important;
+  }
+
+  .premium-phone-dropdown .country.highlight {
+    background: rgb(30 58 138 / 0.4) !important;
+  }
+}
+
+/* Country flag */
+.premium-phone-dropdown .flag {
+  margin-right: 12px !important;
+  font-size: 20px !important;
+}
+
+.premium-phone-button .flag {
+  font-size: 18px !important;
+}
+
+/* Dial code styling */
+.premium-phone-dropdown .dial-code {
+  color: rgb(107 114 128) !important;
+  font-size: 14px !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .premium-phone-dropdown .dial-code {
+    color: rgb(156 163 175) !important;
+  }
+}
+
+/* Country name */
+.premium-phone-dropdown .country-name {
+  color: rgb(31 41 55) !important;
+  font-weight: 500 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .premium-phone-dropdown .country-name {
+    color: rgb(243 244 246) !important;
+  }
+}
+
+/* Animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar styling */
+.premium-phone-dropdown::-webkit-scrollbar {
+  width: 8px !important;
+}
+
+.premium-phone-dropdown::-webkit-scrollbar-track {
+  background: rgb(249 250 251) !important;
+  border-radius: 0 0.75rem 0.75rem 0 !important;
+}
+
+.premium-phone-dropdown::-webkit-scrollbar-thumb {
+  background: rgb(209 213 219) !important;
+  border-radius: 4px !important;
+}
+
+.premium-phone-dropdown::-webkit-scrollbar-thumb:hover {
+  background: rgb(156 163 175) !important;
+}
+
+/* Dark mode scrollbar */
+@media (prefers-color-scheme: dark) {
+  .premium-phone-dropdown::-webkit-scrollbar-track {
+    background: rgb(55 65 81) !important;
+  }
+
+  .premium-phone-dropdown::-webkit-scrollbar-thumb {
+    background: rgb(75 85 99) !important;
+  }
+
+  .premium-phone-dropdown::-webkit-scrollbar-thumb:hover {
+    background: rgb(107 114 128) !important;
+  }
+}
+
+/* Selected arrow */
+.premium-phone-button .selected-flag .arrow {
+  border-top: 5px solid rgb(107 114 128) !important;
+  transition: all 0.2s ease !important;
+}
+
+.premium-phone-button .selected-flag.open .arrow {
+  border-top: 5px solid rgb(59 130 246) !important;
+  transform: rotate(180deg) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .premium-phone-button .selected-flag .arrow {
+    border-top-color: rgb(156 163 175) !important;
+  }
+
+  .premium-phone-button .selected-flag.open .arrow {
+    border-top-color: rgb(96 165 250) !important;
+  }
+}
+

@@ -94,8 +94,7 @@ export default function PrivacyPage() {
             If you have any questions about this Privacy Policy, please contact us at:
           </p>
           <p className="text-black/70 dark:text-white/70">
-            Email: privacy@eabots.com<br />
-            Address: [Your Business Address]
+            Email: privacy@akavanta.com
           </p>
         </section>
       </div>

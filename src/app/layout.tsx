@@ -6,7 +6,7 @@ import TickerTape from "@/components/TickerTape";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "EA Trading Bots | Automated Forex EAs",
+  title: "Akavanta | Automated Forex EAs",
   description:
     "High-performance Expert Advisors (EAs) for automated Forex trading. Backtested strategies, risk controls, and easy onboarding.",
 };

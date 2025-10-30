@@ -1,7 +1,31 @@
-
+"use client";
 import Image from "next/image";
+import { useRouter } from 'next/navigation';
+import { useAtom } from 'jotai';
+import { authStateAtom } from '@/state/atoms';
+
 
 export default function Marketplace() {
+  const router = useRouter();
+  const [authState] = useAtom(authStateAtom);
+  
+  const handleBuyNow = (bot: {
+    name: string;
+    price: number;
+    [key: string]: any;
+  }) => {
+    // Check if user is logged in
+    if (!authState.isAuthed) {
+      // Redirect to login with callback to checkout
+      const checkoutUrl = `/marketplace/checkout?bot=${encodeURIComponent(bot.name)}`;
+      router.push(`/login?callbackUrl=${encodeURIComponent(checkoutUrl)}`);
+      return;
+    }
+    
+    // User is logged in, proceed to checkout
+    router.push(`/marketplace/checkout?bot=${encodeURIComponent(bot.name)}`);
+  };
+
   return (
     <div className="font-sans">
       {/* Hero */}
@@ -131,61 +155,14 @@ export default function Marketplace() {
               <div className="flex items-center justify-between">
                 <div className="text-2xl font-bold">${bot.price}</div>
                 <div className="flex gap-2">
-                  <button className="px-4 py-2 text-sm border border-black/[.08] dark:border-white/[.145] rounded-full hover:bg-black/[.04] dark:hover:bg-white/[.06]">
-                    Preview
-                  </button>
-                  <button className="px-4 py-2 text-sm bg-foreground text-background rounded-full hover:opacity-90">
+                  <button
+                    className="px-4 py-2 text-sm bg-foreground text-background rounded-full hover:opacity-90"
+                    onClick={() => handleBuyNow(bot)}
+                  >
                     Buy now
                   </button>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Pricing Plans */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-10 sm:py-16">
-        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-center">Choose Your Plan</h2>
-        <div className="mt-8 grid gap-5 sm:gap-6 sm:grid-cols-3">
-          {[
-            {
-              tier: "Starter",
-              price: 99,
-              features: ["1 EA license", "Email support", "Setup guide", "Basic documentation"],
-            },
-            {
-              tier: "Pro",
-              price: 199,
-              features: ["3 EA licenses", "Priority support", "Optimization tips", "Advanced settings"],
-            },
-            {
-              tier: "Ultimate",
-              price: 299,
-              features: ["Unlimited licenses", "1:1 onboarding", "Lifetime updates", "Custom strategies"],
-            },
-          ].map((plan) => (
-            <div key={plan.tier} className={`rounded-xl border p-6 flex flex-col ${plan.tier === 'Pro' ? 'border-foreground ring-1 ring-foreground/20' : 'border-black/[.08] dark:border-white/[.145]'}`}>
-              {plan.tier === 'Pro' && (
-                <div className="text-xs font-medium text-foreground mb-2">Most Popular</div>
-              )}
-              <h3 className="font-semibold text-lg">{plan.tier}</h3>
-              <div className="mt-2 text-3xl font-semibold">${plan.price}</div>
-              <ul className="mt-4 space-y-2 text-sm text-black/70 dark:text-white/70">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-foreground" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <button className={`mt-6 rounded-full px-5 py-3 text-sm font-medium text-center ${
-                plan.tier === 'Pro' 
-                  ? 'bg-foreground text-background hover:opacity-90' 
-                  : 'border border-black/[.08] dark:border-white/[.145] hover:bg-black/[.04] dark:hover:bg-white/[.06]'
-              }`}>
-                Choose {plan.tier}
-              </button>
             </div>
           ))}
         </div>
