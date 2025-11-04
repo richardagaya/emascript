@@ -3,14 +3,16 @@
 import { useAtom } from "jotai";
 import { authStateAtom } from "@/state/atoms";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function DashboardPage() {
   const [authState] = useAtom(authStateAtom);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [purchasedEAs, setPurchasedEAs] = useState<any[]>([]);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
 
   const handleDownload = async (eaId: string, eaName: string) => {
     setDownloading(eaId);
@@ -44,6 +46,17 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    // Check for payment success in URL
+    const paymentStatus = searchParams.get('payment');
+    const orderId = searchParams.get('orderId');
+    if (paymentStatus === 'success' && orderId) {
+      setPaymentSuccess(orderId);
+      // Clear the URL parameters
+      router.replace('/dashboard', { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  useEffect(() => {
     // Check authentication and load user's purchased EAs
     const checkAuth = async () => {
       try {
@@ -52,10 +65,21 @@ export default function DashboardPage() {
           router.push("/login?callbackUrl=/dashboard");
         } else {
           // Fetch user's purchased EAs from Firestore
-          const data = await fetch("/api/user/purchased-eas").then(r => r.json());
-          if (data.purchasedEAs) {
-            setPurchasedEAs(data.purchasedEAs);
+          const loadEAs = async () => {
+            const data = await fetch("/api/user/purchased-eas").then(r => r.json());
+            if (data.purchasedEAs) {
+              setPurchasedEAs(data.purchasedEAs);
+            }
+          };
+          await loadEAs();
+          
+          // If payment was successful, reload EAs after a short delay to ensure webhook processed
+          if (paymentSuccess) {
+            setTimeout(() => {
+              loadEAs();
+            }, 2000);
           }
+          
           setIsLoading(false);
         }
       } catch {
@@ -63,7 +87,7 @@ export default function DashboardPage() {
       }
     };
     checkAuth();
-  }, [router]);
+  }, [router, paymentSuccess]);
 
   if (isLoading) {
     return (
@@ -79,6 +103,28 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
+      {/* Payment Success Message */}
+      {paymentSuccess && (
+        <div className="mb-6 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4">
+          <div className="flex items-center gap-3">
+            <div className="text-2xl">✅</div>
+            <div>
+              <h3 className="font-semibold text-green-900 dark:text-green-100">Payment Successful!</h3>
+              <p className="text-sm text-green-700 dark:text-green-300">
+                Your order {paymentSuccess} has been processed. Your EA should appear below shortly. 
+                A confirmation email has been sent to your email address.
+              </p>
+            </div>
+            <button
+              onClick={() => setPaymentSuccess(null)}
+              className="ml-auto text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight">

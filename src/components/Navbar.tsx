@@ -25,7 +25,17 @@ export default function Navbar() {
         setImageError(false); // Reset image error on new user
         // Ensure cookie is present if page loaded directly while logged in
         try {
-          await fetch("/api/session", { method: "GET" });
+          // First check if cookie exists
+          const checkRes = await fetch("/api/session", { method: "GET" });
+          // If cookie doesn't exist, set it with the current user's idToken
+          if (!checkRes.ok) {
+            const idToken = await user.getIdToken();
+            await fetch("/api/session", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ idToken }),
+            });
+          }
         } catch {}
       } else {
         setAuthState({ isAuthed: false, displayName: null, photoURL: null });

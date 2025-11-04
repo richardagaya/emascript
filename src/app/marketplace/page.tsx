@@ -3,6 +3,7 @@ import Image from "next/image";
 import { useRouter } from 'next/navigation';
 import { useAtom } from 'jotai';
 import { authStateAtom } from '@/state/atoms';
+import { getAllEAs } from '@/data/eas';
 
 
 export default function Marketplace() {
@@ -13,7 +14,12 @@ export default function Marketplace() {
     name: string;
     price: number;
     [key: string]: any;
-  }) => {
+  }, e?: React.MouseEvent) => {
+    // Prevent card click from triggering when clicking Buy Now button
+    if (e) {
+      e.stopPropagation();
+    }
+    
     // Check if user is logged in
     if (!authState.isAuthed) {
       // Redirect to login with callback to checkout
@@ -24,6 +30,10 @@ export default function Marketplace() {
     
     // User is logged in, proceed to checkout
     router.push(`/marketplace/checkout?bot=${encodeURIComponent(bot.name)}`);
+  };
+
+  const handleEAClick = (botName: string) => {
+    router.push(`/marketplace/${encodeURIComponent(botName)}`);
   };
 
   return (
@@ -64,68 +74,19 @@ export default function Marketplace() {
         </div>
         
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            { 
-              name: "TrendRider EA", 
-              desc: "Follows medium-term trends with ATR-based risk management. Perfect for trending markets.", 
-              price: 199,
-              category: "Trend Following",
-              rating: 4.8,
-              reviews: 127,
-              image: "/next.svg"
-            },
-            { 
-              name: "ScalpSwift EA", 
-              desc: "High-frequency scalper with advanced spread filtering. Designed for volatile market conditions.", 
-              price: 149,
-              category: "Scalping",
-              rating: 4.6,
-              reviews: 89,
-              image: "/next.svg"
-            },
-            { 
-              name: "MeanRevert Pro", 
-              desc: "Mean reversion strategy with dynamic grid management. Ideal for ranging markets.", 
-              price: 179,
-              category: "Mean Reversion",
-              rating: 4.7,
-              reviews: 156,
-              image: "/next.svg"
-            },
-            { 
-              name: "Breakout Master", 
-              desc: "Catches breakouts with momentum confirmation. Includes false breakout protection.", 
-              price: 229,
-              category: "Breakout",
-              rating: 4.9,
-              reviews: 203,
-              image: "/next.svg"
-            },
-            { 
-              name: "Grid Trader Pro", 
-              desc: "Advanced grid trading with adaptive lot sizing. Built for stable market conditions.", 
-              price: 189,
-              category: "Grid Trading",
-              rating: 4.5,
-              reviews: 94,
-              image: "/next.svg"
-            },
-            { 
-              name: "News Hunter EA", 
-              desc: "Trades around high-impact news events with volatility filters and risk controls.", 
-              price: 259,
-              category: "News Trading",
-              rating: 4.8,
-              reviews: 167,
-              image: "/next.svg"
-            },
-          ].map((bot) => (
-            <div key={bot.name} className="rounded-xl border border-black/[.08] dark:border-white/[.145] p-6 hover:shadow-lg transition-shadow">
-              <div className="h-48 rounded-lg bg-black/[.04] dark:bg-white/[.06] flex items-center justify-center mb-4">
-                <div className="text-center">
-                  <Image src={bot.image} alt={bot.name} width={80} height={80} className="mx-auto opacity-60 dark:invert" />
-                  <p className="mt-2 text-xs text-black/60 dark:text-white/60">Strategy Preview</p>
-                </div>
+          {getAllEAs().map((bot) => (
+            <div 
+              key={bot.name} 
+              className="rounded-xl border border-black/[.08] dark:border-white/[.145] p-6 hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => handleEAClick(bot.name)}
+            >
+              <div className="relative h-48 rounded-lg bg-black/[.04] dark:bg-white/[.06] overflow-hidden mb-4">
+                <Image 
+                  src={bot.image} 
+                  alt={bot.name} 
+                  fill
+                  className="object-cover rounded-lg" 
+                />
               </div>
               
               <div className="flex items-start justify-between mb-2">
@@ -157,9 +118,18 @@ export default function Marketplace() {
                 <div className="flex gap-2">
                   <button
                     className="px-4 py-2 text-sm bg-foreground text-background rounded-full hover:opacity-90"
-                    onClick={() => handleBuyNow(bot)}
+                    onClick={(e) => handleBuyNow(bot, e)}
                   >
                     Buy now
+                  </button>
+                  <button
+                    className="px-4 py-2 text-sm border border-black/[.08] dark:border-white/[.145] rounded-full hover:bg-black/[.04] dark:hover:bg-white/[.06]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEAClick(bot.name);
+                    }}
+                  >
+                    View details
                   </button>
                 </div>
               </div>

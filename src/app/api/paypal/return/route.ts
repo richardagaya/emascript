@@ -3,6 +3,7 @@ import { capturePayPalPayment } from '@/lib/paypal';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { sendConfirmationEmail } from '@/lib/email';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getEAByName } from '@/data/eas';
 
 /**
  * PayPal Return URL Handler
@@ -156,37 +157,16 @@ async function addEAToUserAccount(
   orderId: string
 ) {
   try {
-    // Map bot names to EA details
-    const EA_CATALOG: Record<string, any> = {
-      'TrendRider EA': {
-        eaId: 'trendrider-ea',
-        version: '2.1.0',
-        thumbnail: '📈',
-        description: 'Advanced trend-following strategy',
-        downloadUrl: 'https://storage.../trendrider-ea-v2.1.0.ex4',
-      },
-      'ScalpSwift EA': {
-        eaId: 'scalpswift-ea',
-        version: '1.8.3',
-        thumbnail: '⚡',
-        description: 'High-frequency scalping bot',
-        downloadUrl: 'https://storage.../scalpswift-ea-v1.8.3.ex4',
-      },
-      'MeanRevert Pro': {
-        eaId: 'meanrevert-pro',
-        version: '3.0.1',
-        thumbnail: '🎯',
-        description: 'Mean reversion with grid management',
-        downloadUrl: 'https://storage.../meanrevert-pro-v3.0.1.ex4',
-      },
-    };
-
-    const eaDetails = EA_CATALOG[botName];
+    // Get EA details from the centralized data file
+    const eaData = getEAByName(botName);
     
-    if (!eaDetails) {
+    if (!eaData) {
       console.error(`EA not found in catalog: ${botName}`);
       return;
     }
+
+    // Generate EA ID from bot name (lowercase, replace spaces with hyphens, remove special chars)
+    const eaId = botName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
     // Find or create user document
     const usersRef = adminDb.collection('users');
@@ -208,28 +188,39 @@ async function addEAToUserAccount(
 
     // Add EA to user's purchased EAs
     const purchasedEA = {
-      eaId: eaDetails.eaId,
+      id: `${eaId}-${orderId}`, // Unique ID for this purchase
+      eaId: eaId,
       eaName: botName,
+      name: botName, // Display name
       orderId,
       purchaseDate: new Date().toISOString(),
-      version: eaDetails.version,
+      version: eaData.version,
       license: 'Standard',
-      thumbnail: eaDetails.thumbnail,
-      description: eaDetails.description,
-      downloadUrl: eaDetails.downloadUrl,
+      thumbnail: '🤖', // Default thumbnail
+      description: eaData.desc,
       downloadCount: 0,
       lastDownloaded: null,
     };
 
-    await userRef.update({
-      purchasedEAs: FieldValue.arrayUnion(purchasedEA),
-      updatedAt: new Date().toISOString(),
-    });
-
-    console.log(`EA ${botName} added to user ${email}`);
+    // Check if user already has this EA (prevent duplicates)
+    const userData = userQuery.empty ? { purchasedEAs: [] } : userQuery.docs[0].data();
+    const existingEAs = userData.purchasedEAs || [];
+    
+    // Check if this exact order already exists
+    const orderExists = existingEAs.some((ea: any) => ea.orderId === orderId);
+    
+    if (!orderExists) {
+      await userRef.update({
+        purchasedEAs: FieldValue.arrayUnion(purchasedEA),
+        updatedAt: new Date().toISOString(),
+      });
+      console.log(`✅ EA ${botName} added to user ${email} (Order: ${orderId})`);
+    } else {
+      console.log(`⚠️ EA ${botName} already exists for user ${email} (Order: ${orderId})`);
+    }
     
   } catch (error) {
-    console.error('Error adding EA to user account:', error);
+    console.error('❌ Error adding EA to user account:', error);
     throw error;
   }
 }

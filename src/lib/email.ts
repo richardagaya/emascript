@@ -1,13 +1,15 @@
 import nodemailer from 'nodemailer';
 
 // Create reusable transporter
+// Strip spaces from password (Gmail App Passwords are 16 chars without spaces)
+const smtpPassword = process.env.SMTP_PASSWORD?.replace(/\s+/g, '') || '';
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT || '587'),
   secure: false, // true for 465, false for other ports
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
+    user: process.env.SMTP_USER?.trim(),
+    pass: smtpPassword,
   },
 });
 
@@ -17,6 +19,20 @@ export async function sendConfirmationEmail(
   orderId: string
 ) {
   try {
+    // Check if email credentials are configured
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+      console.error('❌ Email not configured: SMTP_USER or SMTP_PASSWORD missing');
+      throw new Error('Email service not configured. Please set SMTP_USER and SMTP_PASSWORD in environment variables.');
+    }
+
+    console.log(`📧 Preparing email to ${email} for order ${orderId}`, {
+      smtpHost: process.env.SMTP_HOST,
+      smtpPort: process.env.SMTP_PORT,
+      smtpUser: process.env.SMTP_USER,
+      passwordLength: smtpPassword.length,
+      fromEmail: process.env.FROM_EMAIL,
+    });
+    
     const mailOptions = {
       from: process.env.FROM_EMAIL || 'noreply@akavanta.com',
       to: email,
@@ -122,12 +138,23 @@ export async function sendConfirmationEmail(
       `,
     };
 
-    await transporter.sendMail(mailOptions);
-    console.log(`Confirmation email sent to ${email}`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ Confirmation email sent to ${email}`, {
+      messageId: info.messageId,
+      response: info.response,
+    });
     
-  } catch (error) {
-    console.error('Error sending confirmation email:', error);
-    // Don't throw error - email failure shouldn't block the payment process
+  } catch (error: any) {
+    console.error('❌ Error sending confirmation email:', {
+      email,
+      orderId,
+      error: error?.message || error,
+      code: error?.code,
+      command: error?.command,
+      response: error?.response,
+    });
+    // Re-throw error so caller can handle it
+    throw error;
   }
 }
 

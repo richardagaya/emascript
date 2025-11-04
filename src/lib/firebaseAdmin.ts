@@ -35,12 +35,27 @@ if (!getApps().length) {
     console.error('   1. All Firebase environment variables are set in .env.local');
     console.error('   2. Firestore database is created in Firebase Console');
     console.error('   3. Service account has proper permissions');
+    throw error; // Re-throw to prevent undefined adminApp usage
   }
 } else {
   adminApp = getApps()[0];
 }
 
+if (!adminApp) {
+  throw new Error('Firebase Admin app is not initialized');
+}
+
 export const adminAuth = getAuth(adminApp);
-export const adminDb = getFirestore(adminApp);
+
+// Get Firestore instance - support named databases (default is "(default)")
+// If you have a named database, set FIREBASE_DATABASE_ID in .env.local
+const databaseId = process.env.FIREBASE_DATABASE_ID || '(default)';
+export const adminDb = getFirestore(adminApp, databaseId);
+
+// Log database configuration
+if (databaseId !== '(default)') {
+  console.log(`   Database ID: ${databaseId}`);
+}
+
 export const adminStorage = getStorage(adminApp);
 
