@@ -47,8 +47,22 @@ export async function GET(req: NextRequest) {
     }
 
     // Check if user owns this EA
-    const usersRef = adminDb.collection('users');
-    const userQuery = await usersRef.where('email', '==', userEmail).limit(1).get();
+    let userQuery;
+    try {
+      const usersRef = adminDb.collection('users');
+      userQuery = await usersRef.where('email', '==', userEmail).limit(1).get();
+    } catch (firestoreError: any) {
+      // Handle Firestore connection errors
+      if (firestoreError?.code === 5 || firestoreError?.code === 'NOT_FOUND') {
+        console.warn('⚠️  Firestore database not found or not initialized.');
+        console.warn('💡 See check-firestore.js script to diagnose the issue.');
+        return NextResponse.json(
+          { error: 'Database not available. Please contact support.' },
+          { status: 503 }
+        );
+      }
+      throw firestoreError;
+    }
 
     if (userQuery.empty) {
       return NextResponse.json(

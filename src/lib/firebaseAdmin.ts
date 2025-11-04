@@ -4,9 +4,21 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 
 // Initialize Firebase Admin SDK
+let adminApp;
 if (!getApps().length) {
   try {
-    initializeApp({
+    // Validate required environment variables
+    if (!process.env.FIREBASE_ADMIN_PROJECT_ID) {
+      console.error('❌ FIREBASE_ADMIN_PROJECT_ID is not set');
+    }
+    if (!process.env.FIREBASE_ADMIN_CLIENT_EMAIL) {
+      console.error('❌ FIREBASE_ADMIN_CLIENT_EMAIL is not set');
+    }
+    if (!process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
+      console.error('❌ FIREBASE_ADMIN_PRIVATE_KEY is not set');
+    }
+
+    adminApp = initializeApp({
       credential: cert({
         projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
         clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
@@ -14,12 +26,21 @@ if (!getApps().length) {
       }),
       storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
     });
+    
+    console.log('✅ Firebase Admin SDK initialized successfully');
+    console.log(`   Project ID: ${process.env.FIREBASE_ADMIN_PROJECT_ID}`);
   } catch (error) {
-    console.error('Firebase admin initialization error', error);
+    console.error('❌ Firebase admin initialization error:', error);
+    console.error('💡 Make sure:');
+    console.error('   1. All Firebase environment variables are set in .env.local');
+    console.error('   2. Firestore database is created in Firebase Console');
+    console.error('   3. Service account has proper permissions');
   }
+} else {
+  adminApp = getApps()[0];
 }
 
-export const adminAuth = getAuth();
-export const adminDb = getFirestore();
-export const adminStorage = getStorage();
+export const adminAuth = getAuth(adminApp);
+export const adminDb = getFirestore(adminApp);
+export const adminStorage = getStorage(adminApp);
 

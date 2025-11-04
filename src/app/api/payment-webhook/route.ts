@@ -1,12 +1,99 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { sendConfirmationEmail } from '@/lib/email';
-import { verifyPesapalPayment, verifyMpesaPayment } from '@/lib/pesapal';
+import { verifyPesapalPayment } from '@/lib/pesapal';
+import { verifyMpesaPayment } from '@/lib/mpesa';
 import { getPayPalOrderDetails, verifyPayPalWebhook } from '@/lib/paypal';
 import { FieldValue } from 'firebase-admin/firestore';
 
 // This endpoint receives payment confirmations from payment gateways
 // M-PESA, Pesapal, and PayPal will send webhook notifications here
+
+// Handle Pesapal IPN (GET request with query parameters)
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    
+    // Check if this is a Pesapal IPN notification
+    const notificationType = searchParams.get('pesapal_notification_type');
+    const transactionTrackingId = searchParams.get('pesapal_transaction_tracking_id');
+    const merchantReference = searchParams.get('pesapal_merchant_reference');
+    
+    if (notificationType && transactionTrackingId && merchantReference) {
+      console.log('📥 Received Pesapal IPN notification:', {
+        notificationType,
+        transactionTrackingId,
+        merchantReference,
+      });
+      
+      // Verify the payment status
+      const verification = await verifyPesapalPayment(transactionTrackingId);
+      
+      // Get order from Firestore using merchant reference (orderId)
+      try {
+        const orderRef = adminDb.collection('orders').doc(merchantReference);
+        const orderDoc = await orderRef.get();
+        
+        if (orderDoc.exists) {
+          const orderData = orderDoc.data();
+          
+          if (verification.success) {
+            // Payment completed
+            await orderRef.update({
+              status: 'completed',
+              transactionId: transactionTrackingId,
+              paidAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+            
+            // Add EA to user's account
+            await addEAToUserAccount(
+              orderData!.email,
+              orderData!.botName,
+              merchantReference
+            );
+            
+            // Send confirmation email
+            await sendConfirmationEmail(orderData!.email, orderData!.botName, merchantReference);
+            
+            console.log(`✅ Pesapal payment completed for order ${merchantReference}`);
+          } else {
+            // Payment failed or still pending
+            await orderRef.update({
+              status: verification.error ? 'failed' : 'pending',
+              transactionId: transactionTrackingId,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }
+      } catch (firestoreError: any) {
+        // Firestore might not be available, but we still need to respond to Pesapal
+        console.error('Firestore error processing Pesapal IPN:', firestoreError);
+      }
+      
+      // Pesapal IPN requires us to echo back the same parameters
+      // This confirms we received the notification
+      return NextResponse.json({
+        pesapal_notification_type: notificationType,
+        pesapal_transaction_tracking_id: transactionTrackingId,
+        pesapal_merchant_reference: merchantReference,
+      }, { status: 200 });
+    }
+    
+    // Not a Pesapal IPN, return 404
+    return NextResponse.json(
+      { error: 'Not a valid IPN notification' },
+      { status: 404 }
+    );
+  } catch (error) {
+    console.error('Error processing Pesapal IPN:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -22,19 +109,27 @@ export async function POST(req: NextRequest) {
     let paymentMethod = '';
     let amount = 0;
 
-    // Handle Pesapal webhook
-    if (body.order_tracking_id || body.orderMerchantReference) {
-      orderId = body.orderMerchantReference || body.order_tracking_id;
+    // Handle Pesapal webhook (POST with JSON body)
+    if (body.order_tracking_id || body.orderMerchantReference || body.order_tracking_id) {
+      orderId = body.orderMerchantReference || body.order_merchant_reference || body.order_tracking_id;
       status = body.payment_status || body.status;
-      transactionId = body.order_tracking_id || body.transaction_id;
+      transactionId = body.order_tracking_id || body.transaction_id || body.pesapal_transaction_tracking_id;
       paymentMethod = 'pesapal';
       amount = parseFloat(body.amount || '0');
       
+      console.log('📥 Received Pesapal webhook (POST):', {
+        orderId,
+        transactionId,
+        status,
+      });
+      
       // Verify Pesapal payment
-      if (orderId && transactionId) {
+      if (transactionId) {
         const verification = await verifyPesapalPayment(transactionId);
-        if (!verification.success) {
-          status = 'failed';
+        if (verification.success) {
+          status = 'completed';
+        } else if (!status || status === 'PENDING') {
+          status = verification.error ? 'failed' : 'pending';
         }
       }
     }

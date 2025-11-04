@@ -1,25 +1,29 @@
 import axios from 'axios';
 
-// Pesapal Daraja API configuration
+/**
+ * Pesapal API Integration
+ * Documentation: https://developer.pesapal.com/
+ */
+
+// Pesapal API configuration
+// Helper function to get base URL from environment variables
+function getAppBaseUrl(): string {
+  return process.env.NEXTAUTH_URL || 
+         process.env.NEXT_PUBLIC_APP_URL || 
+         'http://localhost:3000';
+}
+
 const PESAPAL_CONFIG = {
   baseUrl: process.env.PESAPAL_BASE_URL || 'https://api.pesapal.com',
   consumerKey: process.env.PESAPAL_CONSUMER_KEY,
   consumerSecret: process.env.PESAPAL_CONSUMER_SECRET,
-  callbackUrl: process.env.PESAPAL_CALLBACK_URL || `${process.env.NEXTAUTH_URL}/api/payment-webhook`,
-  ipnUrl: process.env.PESAPAL_IPN_URL || `${process.env.NEXTAUTH_URL}/api/payment-webhook`,
+  // Use PESAPAL_CALLBACK_URL if set, otherwise construct from base URL
+  callbackUrl: process.env.PESAPAL_CALLBACK_URL || `${getAppBaseUrl()}/api/payment-webhook`,
+  // Use PESAPAL_IPN_URL if set, otherwise construct from base URL
+  ipnUrl: process.env.PESAPAL_IPN_URL || `${getAppBaseUrl()}/api/payment-webhook`,
 };
 
-// M-Pesa Daraja API configuration
-const MPESA_CONFIG = {
-  baseUrl: process.env.MPESA_BASE_URL || 'https://sandbox.safaricom.co.ke',
-  consumerKey: process.env.MPESA_CONSUMER_KEY,
-  consumerSecret: process.env.MPESA_CONSUMER_SECRET,
-  passkey: process.env.MPESA_PASSKEY,
-  shortcode: process.env.MPESA_SHORTCODE,
-  callbackUrl: process.env.MPESA_CALLBACK_URL || `${process.env.NEXTAUTH_URL}/api/payment-webhook`,
-};
-
-interface PaymentRequest {
+export interface PesapalPaymentRequest {
   orderId: string;
   amount: number;
   currency: string;
@@ -29,204 +33,291 @@ interface PaymentRequest {
   botName: string;
 }
 
-interface PaymentResponse {
+export interface PesapalPaymentResponse {
   success: boolean;
   paymentUrl?: string;
   transactionId?: string;
+  orderTrackingId?: string;
   error?: string;
 }
 
-// Get Pesapal access token
+/**
+ * Get Pesapal API access token
+ * Pesapal uses a simple token-based authentication
+ */
 async function getPesapalAccessToken(): Promise<string> {
   try {
-    const response = await axios.post(`${PESAPAL_CONFIG.baseUrl}/api/Auth/RequestToken`, {
-      consumer_key: PESAPAL_CONFIG.consumerKey,
-      consumer_secret: PESAPAL_CONFIG.consumerSecret,
-    });
+    if (!PESAPAL_CONFIG.consumerKey || !PESAPAL_CONFIG.consumerSecret) {
+      throw new Error('Pesapal credentials not configured');
+    }
+
+    // Handle base URL format - if it already ends with /pesapalv3, use it as-is
+    let authUrl: string;
+    if (PESAPAL_CONFIG.baseUrl.includes('/pesapalv3')) {
+      authUrl = `${PESAPAL_CONFIG.baseUrl}/api/Auth/RequestToken`;
+    } else {
+      authUrl = `${PESAPAL_CONFIG.baseUrl}/pesapalv3/api/Auth/RequestToken`;
+    }
+
+    const response = await axios.post(
+      authUrl,
+      {
+        consumer_key: PESAPAL_CONFIG.consumerKey,
+        consumer_secret: PESAPAL_CONFIG.consumerSecret,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+      }
+    );
+
+    if (!response.data.token) {
+      throw new Error('Invalid response from Pesapal auth endpoint');
+    }
 
     return response.data.token;
-  } catch (error) {
-    console.error('Error getting Pesapal access token:', error);
-    throw new Error('Failed to get Pesapal access token');
+  } catch (error: any) {
+    console.error('Error getting Pesapal access token:', error.response?.data || error.message);
+    throw new Error(
+      error.response?.data?.message || 
+      error.response?.data?.error || 
+      'Failed to get Pesapal access token'
+    );
   }
 }
 
-// Get M-Pesa access token
-async function getMpesaAccessToken(): Promise<string> {
-  try {
-    const auth = Buffer.from(`${MPESA_CONFIG.consumerKey}:${MPESA_CONFIG.consumerSecret}`).toString('base64');
-    
-    const response = await axios.get(`${MPESA_CONFIG.baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
-      headers: {
-        Authorization: `Basic ${auth}`,
-      },
-    });
-
-    return response.data.access_token;
-  } catch (error) {
-    console.error('Error getting M-Pesa access token:', error);
-    throw new Error('Failed to get M-Pesa access token');
-  }
-}
-
-// Initialize Pesapal payment
-export async function initializePesapalPayment(paymentData: PaymentRequest): Promise<PaymentResponse> {
+/**
+ * Initialize Pesapal payment
+ * Creates a payment request and returns a redirect URL for the customer
+ * Documentation: https://developer.pesapal.com/api3/endpoints/submit-order-request
+ */
+export async function initializePesapalPayment(
+  paymentData: PesapalPaymentRequest
+): Promise<PesapalPaymentResponse> {
   try {
     const accessToken = await getPesapalAccessToken();
     
-    const paymentRequest = {
-      id: paymentData.orderId,
-      currency: paymentData.currency,
-      amount: paymentData.amount,
-      description: paymentData.description,
-      callback_url: PESAPAL_CONFIG.callbackUrl,
-      notification_id: PESAPAL_CONFIG.ipnUrl,
+    // Pesapal payment request payload
+    // According to Pesapal API v3 documentation
+    // Note: notification_id can be either:
+    // 1. A registered IPN ID (from registerPesapalIPN)
+    // 2. An IPN URL (Pesapal will use it directly)
+    // We use the URL directly for simplicity
+    const paymentRequest: any = {
+      id: paymentData.orderId, // Unique order ID
+      currency: paymentData.currency, // Currency code (KES, USD, etc.)
+      amount: paymentData.amount, // Payment amount
+      description: paymentData.description, // Order description
+      callback_url: PESAPAL_CONFIG.callbackUrl, // URL to redirect after payment
       billing_address: {
         phone_number: paymentData.phoneNumber,
         email_address: paymentData.email,
-        country_code: 'KE',
+        country_code: 'KE', // ISO country code
       },
     };
+    
+    // Use IPN ID if configured, otherwise use IPN URL
+    // Pesapal v3 supports both formats
+    if (process.env.PESAPAL_IPN_ID) {
+      paymentRequest.notification_id = process.env.PESAPAL_IPN_ID;
+    } else {
+      paymentRequest.notification_id = PESAPAL_CONFIG.ipnUrl;
+    }
+
+    // Handle base URL format - if it already ends with /pesapalv3, use it as-is
+    // Otherwise, append /api/Transactions/SubmitOrderRequest
+    let apiUrl: string;
+    if (PESAPAL_CONFIG.baseUrl.includes('/pesapalv3')) {
+      // Base URL already includes /pesapalv3, append /api/...
+      apiUrl = `${PESAPAL_CONFIG.baseUrl}/api/Transactions/SubmitOrderRequest`;
+    } else {
+      // Base URL is just the domain, construct full path
+      apiUrl = `${PESAPAL_CONFIG.baseUrl}/pesapalv3/api/Transactions/SubmitOrderRequest`;
+    }
+    
+    console.log('📤 Pesapal API Request:', {
+      baseUrl: PESAPAL_CONFIG.baseUrl,
+      apiUrl: apiUrl,
+      payload: JSON.stringify(paymentRequest, null, 2),
+    });
 
     const response = await axios.post(
-      `${PESAPAL_CONFIG.baseUrl}/api/Transactions/SubmitOrderRequest`,
+      apiUrl,
       paymentRequest,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          Accept: 'application/json',
         },
       }
     );
 
-    return {
-      success: true,
-      paymentUrl: response.data.redirect_url,
-      transactionId: response.data.order_tracking_id,
-    };
-  } catch (error) {
-    console.error('Error initializing Pesapal payment:', error);
-    return {
-      success: false,
-      error: 'Failed to initialize Pesapal payment',
-    };
-  }
-}
+    console.log('📥 Pesapal API Response:', {
+      status: response.status,
+      data: JSON.stringify(response.data, null, 2),
+      headers: response.headers,
+    });
 
-// Initialize M-Pesa STK Push
-export async function initializeMpesaPayment(paymentData: PaymentRequest): Promise<PaymentResponse> {
-  try {
-    const accessToken = await getMpesaAccessToken();
+    // Pesapal returns redirect_url for customer to complete payment
+    // Check various possible response formats
+    const redirectUrl = response.data?.redirect_url || 
+                       response.data?.redirectUrl || 
+                       response.data?.payment_url ||
+                       response.data?.paymentUrl;
     
-    const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, -3);
-    const password = Buffer.from(`${MPESA_CONFIG.shortcode}${MPESA_CONFIG.passkey}${timestamp}`).toString('base64');
-    
-    const stkPushRequest = {
-      BusinessShortCode: MPESA_CONFIG.shortcode,
-      Password: password,
-      Timestamp: timestamp,
-      TransactionType: 'CustomerPayBillOnline',
-      Amount: Math.round(paymentData.amount),
-      PartyA: paymentData.phoneNumber,
-      PartyB: MPESA_CONFIG.shortcode,
-      PhoneNumber: paymentData.phoneNumber,
-      CallBackURL: MPESA_CONFIG.callbackUrl,
-      AccountReference: paymentData.orderId,
-      TransactionDesc: paymentData.description,
-    };
+    const trackingId = response.data?.order_tracking_id || 
+                      response.data?.orderTrackingId ||
+                      response.data?.tracking_id ||
+                      response.data?.id;
 
-    const response = await axios.post(
-      `${MPESA_CONFIG.baseUrl}/mpesa/stkpush/v1/processrequest`,
-      stkPushRequest,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (response.data.ResponseCode === '0') {
+    if (redirectUrl) {
       return {
         success: true,
-        transactionId: response.data.CheckoutRequestID,
+        paymentUrl: redirectUrl,
+        transactionId: trackingId || paymentData.orderId,
+        orderTrackingId: trackingId || paymentData.orderId,
       };
     } else {
+      console.error('❌ Pesapal API response missing redirect URL:', {
+        responseData: response.data,
+        responseKeys: Object.keys(response.data || {}),
+      });
       return {
         success: false,
-        error: response.data.ResponseDescription || 'M-Pesa payment failed',
+        error: `Invalid response from Pesapal API - missing redirect URL. Response: ${JSON.stringify(response.data)}`,
       };
     }
-  } catch (error) {
-    console.error('Error initializing M-Pesa payment:', error);
+  } catch (error: any) {
+    console.error('❌ Error initializing Pesapal payment:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers,
+      },
+    });
+    
+    const errorMessage = error.response?.data?.message || 
+                        error.response?.data?.error || 
+                        error.response?.data?.error_description ||
+                        error.response?.data?.errorMessage ||
+                        error.message || 
+                        'Failed to initialize Pesapal payment';
+    
     return {
       success: false,
-      error: 'Failed to initialize M-Pesa payment',
+      error: errorMessage,
     };
   }
 }
 
-// Verify Pesapal payment status
-export async function verifyPesapalPayment(orderTrackingId: string): Promise<PaymentResponse> {
+/**
+ * Register IPN URL with Pesapal
+ * Registers the IPN URL for receiving payment notifications
+ * Documentation: https://developer.pesapal.com/api3/endpoints/registeripnurl
+ */
+export async function registerPesapalIPN(ipnUrl: string): Promise<{ success: boolean; ipnId?: string; error?: string }> {
   try {
     const accessToken = await getPesapalAccessToken();
     
-    const response = await axios.get(
-      `${PESAPAL_CONFIG.baseUrl}/api/Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    const status = response.data.payment_status;
-    
-    return {
-      success: status === 'COMPLETED',
-      transactionId: orderTrackingId,
-    };
-  } catch (error) {
-    console.error('Error verifying Pesapal payment:', error);
-    return {
-      success: false,
-      error: 'Failed to verify Pesapal payment',
-    };
-  }
-}
-
-// Verify M-Pesa payment status
-export async function verifyMpesaPayment(checkoutRequestId: string): Promise<PaymentResponse> {
-  try {
-    const accessToken = await getMpesaAccessToken();
+    // Handle base URL format
+    let registerUrl: string;
+    if (PESAPAL_CONFIG.baseUrl.includes('/pesapalv3')) {
+      registerUrl = `${PESAPAL_CONFIG.baseUrl}/api/URLSetup/RegisterIPN`;
+    } else {
+      registerUrl = `${PESAPAL_CONFIG.baseUrl}/pesapalv3/api/URLSetup/RegisterIPN`;
+    }
     
     const response = await axios.post(
-      `${MPESA_CONFIG.baseUrl}/mpesa/stkpushquery/v1/query`,
+      registerUrl,
       {
-        BusinessShortCode: MPESA_CONFIG.shortcode,
-        Password: '', // Will be generated
-        Timestamp: new Date().toISOString().replace(/[^0-9]/g, '').slice(0, -3),
-        CheckoutRequestID: checkoutRequestId,
+        url: ipnUrl,
+        ipn_notification_type: 'GET', // Pesapal IPN can use GET or POST
       },
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          Accept: 'application/json',
         },
       }
     );
 
-    const resultCode = response.data.ResultCode;
-    
-    return {
-      success: resultCode === 0,
-      transactionId: checkoutRequestId,
-    };
-  } catch (error) {
-    console.error('Error verifying M-Pesa payment:', error);
+    if (response.data && response.data.ipn_id) {
+      return {
+        success: true,
+        ipnId: response.data.ipn_id,
+      };
+    } else {
+      return {
+        success: false,
+        error: 'Invalid response from Pesapal IPN registration',
+      };
+    }
+  } catch (error: any) {
+    console.error('Error registering Pesapal IPN:', error.response?.data || error.message);
+    // IPN might already be registered, so we don't fail completely
     return {
       success: false,
-      error: 'Failed to verify M-Pesa payment',
+      error: error.response?.data?.message || 'Failed to register Pesapal IPN',
+    };
+  }
+}
+
+/**
+ * Verify Pesapal payment status
+ * Check the status of a payment using the order tracking ID
+ * Documentation: https://developer.pesapal.com/api3/endpoints/get-transaction-status
+ */
+export async function verifyPesapalPayment(
+  orderTrackingId: string
+): Promise<PesapalPaymentResponse> {
+  try {
+    const accessToken = await getPesapalAccessToken();
+    
+    // Handle base URL format
+    let statusUrl: string;
+    if (PESAPAL_CONFIG.baseUrl.includes('/pesapalv3')) {
+      statusUrl = `${PESAPAL_CONFIG.baseUrl}/api/Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`;
+    } else {
+      statusUrl = `${PESAPAL_CONFIG.baseUrl}/pesapalv3/api/Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`;
+    }
+    
+    const response = await axios.get(
+      statusUrl,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+      }
+    );
+
+    // Pesapal payment statuses: PENDING, COMPLETED, FAILED, etc.
+    const status = response.data.payment_status || response.data.status;
+    const isCompleted = status === 'COMPLETED' || status === 'COMPLETE' || status === 'SUCCESS';
+    
+    return {
+      success: isCompleted,
+      transactionId: orderTrackingId,
+      orderTrackingId: orderTrackingId,
+    };
+  } catch (error: any) {
+    console.error('Error verifying Pesapal payment:', error.response?.data || error.message);
+    const errorMessage = error.response?.data?.message || 
+                        error.response?.data?.error ||
+                        error.message || 
+                        'Failed to verify Pesapal payment';
+    return {
+      success: false,
+      error: errorMessage,
+      transactionId: orderTrackingId,
     };
   }
 }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { sendOrderPendingEmail } from '@/lib/email';
-import { initializePesapalPayment, initializeMpesaPayment } from '@/lib/pesapal';
+import { initializePesapalPayment } from '@/lib/pesapal';
+import { initializeMpesaPayment } from '@/lib/mpesa';
 import { initializePayPalPayment } from '@/lib/paypal';
 
 export async function POST(req: NextRequest) {
@@ -54,13 +55,28 @@ export async function POST(req: NextRequest) {
       updatedAt: timestamp,
     };
 
-    // Save order to Firestore
-    await adminDb.collection('orders').doc(orderId).set(orderData);
+    // Save order to Firestore (non-blocking - continue even if Firestore fails)
+    let firestoreSaved = false;
+    try {
+      await adminDb.collection('orders').doc(orderId).set(orderData);
+      firestoreSaved = true;
+      console.log('Order saved to Firestore:', orderId);
+    } catch (firestoreError: any) {
+      if (firestoreError?.code === 5 || firestoreError?.code === 'NOT_FOUND') {
+        console.warn('⚠️  Firestore not available. Order will be saved after payment. Continuing with payment initialization...');
+      } else {
+        console.error('Firestore save error (non-critical):', firestoreError);
+      }
+      // Continue with payment initialization even if Firestore fails
+    }
 
-    console.log('Order saved to Firestore:', orderId);
-
-    // Send order confirmation email
-    await sendOrderPendingEmail(email, botName, orderId, paymentMethod);
+    // Send order confirmation email (non-blocking)
+    try {
+      await sendOrderPendingEmail(email, botName, orderId, paymentMethod);
+    } catch (emailError) {
+      console.error('Email send error (non-critical):', emailError);
+      // Continue with payment initialization even if email fails
+    }
 
     // Initialize payment based on method
     let paymentResult: { success: boolean; paymentUrl?: string; transactionId?: string; error?: string } = { 
@@ -70,22 +86,69 @@ export async function POST(req: NextRequest) {
       error: '' 
     };
     
-    const paymentData = {
-      orderId,
-      amount: 50, // Fixed price for EA
-      currency: 'USD',
-      phoneNumber: phone,
-      email,
-      description: `Purchase of ${botName} - Expert Advisor`,
-      botName,
-    };
-
-    if (paymentMethod === 'mpesa') {
-      paymentResult = await initializeMpesaPayment(paymentData);
-    } else if (paymentMethod === 'pesapal') {
-      paymentResult = await initializePesapalPayment(paymentData);
-    } else if (paymentMethod === 'paypal') {
-      paymentResult = await initializePayPalPayment(paymentData);
+    // Determine currency based on payment method
+    // M-Pesa uses KES (Kenyan Shillings), others use USD
+    const currency = paymentMethod === 'mpesa' ? 'KES' : 'USD';
+    // Convert USD to KES if using M-Pesa (approximate rate: 1 USD = 130 KES)
+    const exchangeRate = 130; // TODO: Use actual exchange rate API
+    const amount = paymentMethod === 'mpesa' ? 50 * exchangeRate : 50;
+    
+    // Initialize payment based on method
+    console.log(`Initializing ${paymentMethod} payment for order ${orderId}...`);
+    console.log(`Payment details: amount=${amount}, currency=${currency}, email=${email}`);
+    
+    try {
+      if (paymentMethod === 'mpesa') {
+        paymentResult = await initializeMpesaPayment({
+          orderId,
+          amount,
+          currency,
+          phoneNumber: phone,
+          email,
+          description: `Purchase of ${botName} - Expert Advisor`,
+          botName,
+        });
+      } else if (paymentMethod === 'pesapal') {
+        paymentResult = await initializePesapalPayment({
+          orderId,
+          amount,
+          currency,
+          phoneNumber: phone,
+          email,
+          description: `Purchase of ${botName} - Expert Advisor`,
+          botName,
+        });
+      } else if (paymentMethod === 'paypal') {
+        paymentResult = await initializePayPalPayment({
+          orderId,
+          amount,
+          currency,
+          phoneNumber: phone,
+          email,
+          description: `Purchase of ${botName} - Expert Advisor`,
+          botName,
+        });
+      } else {
+        return NextResponse.json({
+          success: false,
+          error: `Unsupported payment method: ${paymentMethod}`,
+          orderId,
+        }, { status: 400 });
+      }
+      
+      console.log(`Payment initialization result:`, {
+        success: paymentResult.success,
+        hasPaymentUrl: !!paymentResult.paymentUrl,
+        hasTransactionId: !!paymentResult.transactionId,
+        error: paymentResult.error,
+      });
+    } catch (paymentError: any) {
+      console.error(`Error initializing ${paymentMethod} payment:`, paymentError);
+      return NextResponse.json({
+        success: false,
+        error: paymentError.message || `Failed to initialize ${paymentMethod} payment`,
+        orderId,
+      }, { status: 500 });
     }
 
     if (!paymentResult.success) {
@@ -94,6 +157,25 @@ export async function POST(req: NextRequest) {
         error: paymentResult.error || 'Payment initialization failed',
         orderId,
       }, { status: 400 });
+    }
+
+    // Update order with transaction ID and payment URL if available (non-blocking)
+    if (firestoreSaved) {
+      try {
+        const updateData: any = {
+          transactionId: paymentResult.transactionId,
+          updatedAt: new Date().toISOString(),
+        };
+        
+        if (paymentResult.paymentUrl) {
+          updateData.paymentUrl = paymentResult.paymentUrl;
+        }
+        
+        await adminDb.collection('orders').doc(orderId).update(updateData);
+      } catch (updateError) {
+        console.error('Firestore update error (non-critical):', updateError);
+        // Don't fail the request if Firestore update fails
+      }
     }
 
     return NextResponse.json({

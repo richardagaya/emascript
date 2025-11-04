@@ -1,4 +1,17 @@
-import { PayPalApi, OrdersApi, OrdersCreateRequest, Money, OrderRequest, ApplicationContext, PaymentSource, PaypalWallet } from '@paypal/paypal-server-sdk';
+import { 
+  Client, 
+  OrdersController, 
+  OrderRequest, 
+  OrderApplicationContext,
+  CheckoutPaymentIntent,
+  OrderCaptureRequest,
+  Environment
+} from '@paypal/paypal-server-sdk';
+
+/**
+ * PayPal API Integration
+ * Documentation: https://developer.paypal.com/docs/api/orders/v2/
+ */
 
 // PayPal configuration
 const PAYPAL_CONFIG = {
@@ -6,11 +19,11 @@ const PAYPAL_CONFIG = {
   clientSecret: process.env.PAYPAL_CLIENT_SECRET,
   environment: process.env.PAYPAL_ENVIRONMENT || 'sandbox', // 'sandbox' or 'live'
   baseUrl: process.env.PAYPAL_BASE_URL || 'https://api.sandbox.paypal.com',
-  returnUrl: process.env.PAYPAL_RETURN_URL || `${process.env.NEXTAUTH_URL}/api/payment-webhook`,
+  returnUrl: process.env.PAYPAL_RETURN_URL || `${process.env.NEXTAUTH_URL}/api/paypal/return`,
   cancelUrl: process.env.PAYPAL_CANCEL_URL || `${process.env.NEXTAUTH_URL}/marketplace/checkout`,
 };
 
-interface PaymentRequest {
+export interface PayPalPaymentRequest {
   orderId: string;
   amount: number;
   currency: string;
@@ -20,165 +33,264 @@ interface PaymentRequest {
   botName: string;
 }
 
-interface PaymentResponse {
+export interface PayPalPaymentResponse {
   success: boolean;
   paymentUrl?: string;
   transactionId?: string;
+  orderId?: string;
   error?: string;
 }
 
-// Initialize PayPal client
-function getPayPalClient() {
-  const environment = PAYPAL_CONFIG.environment === 'live' 
-    ? 'live' 
-    : 'sandbox';
-    
-  return new PayPalApi({
-    clientId: PAYPAL_CONFIG.clientId!,
-    clientSecret: PAYPAL_CONFIG.clientSecret!,
-    environment: environment as any,
+/**
+ * Initialize PayPal API client
+ * Uses OAuth 2.0 client credentials
+ */
+function getPayPalClient(): Client {
+  if (!PAYPAL_CONFIG.clientId || !PAYPAL_CONFIG.clientSecret) {
+    throw new Error('PayPal credentials not configured. Please set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET in your environment variables.');
+  }
+
+  console.log('Creating PayPal client:', {
+    environment: PAYPAL_CONFIG.environment,
+    hasClientId: !!PAYPAL_CONFIG.clientId,
+    hasClientSecret: !!PAYPAL_CONFIG.clientSecret,
+    clientIdLength: PAYPAL_CONFIG.clientId?.length,
+  });
+
+  return new Client({
+    environment: PAYPAL_CONFIG.environment === 'live' ? Environment.Production : Environment.Sandbox,
+    clientCredentialsAuthCredentials: {
+      oAuthClientId: PAYPAL_CONFIG.clientId,
+      oAuthClientSecret: PAYPAL_CONFIG.clientSecret,
+    },
   });
 }
 
-// Initialize PayPal payment
-export async function initializePayPalPayment(paymentData: PaymentRequest): Promise<PaymentResponse> {
+/**
+ * Initialize PayPal payment order
+ * Creates a PayPal order and returns approval URL for customer to complete payment
+ * Documentation: https://developer.paypal.com/docs/api/orders/v2/#orders_create
+ */
+export async function initializePayPalPayment(
+  paymentData: PayPalPaymentRequest
+): Promise<PayPalPaymentResponse> {
   try {
     const paypalClient = getPayPalClient();
-    const ordersApi = new OrdersApi(paypalClient);
+    const ordersController = new OrdersController(paypalClient);
 
+    // Validate return URL - must be absolute and HTTPS (except localhost)
+    if (!PAYPAL_CONFIG.returnUrl || !PAYPAL_CONFIG.returnUrl.includes('http')) {
+      throw new Error(`Invalid PayPal return URL: ${PAYPAL_CONFIG.returnUrl}. Please set PAYPAL_RETURN_URL or NEXTAUTH_URL in your environment variables.`);
+    }
+
+    // Validate cancel URL
+    if (!PAYPAL_CONFIG.cancelUrl || !PAYPAL_CONFIG.cancelUrl.includes('http')) {
+      throw new Error(`Invalid PayPal cancel URL: ${PAYPAL_CONFIG.cancelUrl}. Please set PAYPAL_CANCEL_URL or NEXTAUTH_URL in your environment variables.`);
+    }
+
+    // Validate amount - PayPal requires minimum $0.01 USD
+    if (!paymentData.amount || paymentData.amount <= 0) {
+      throw new Error(`Invalid payment amount: ${paymentData.amount}. Amount must be greater than 0.`);
+    }
+
+    // PayPal minimum amount check
+    if (paymentData.currency === 'USD' && paymentData.amount < 0.01) {
+      throw new Error(`PayPal requires minimum amount of $0.01 USD. Current amount: ${paymentData.amount}`);
+    }
+
+    // PayPal Order Request according to Orders API v2
+    // Note: Ensure return/cancel URLs are absolute URLs
     const orderRequest: OrderRequest = {
-      intent: 'CAPTURE',
+      intent: CheckoutPaymentIntent.Capture, // Capture payment immediately after approval
       purchaseUnits: [
         {
           referenceId: paymentData.orderId,
           amount: {
             currencyCode: paymentData.currency,
-            value: paymentData.amount.toString(),
+            value: paymentData.amount.toFixed(2), // Format to 2 decimal places (required by PayPal)
           },
-          description: paymentData.description,
+          description: paymentData.description.substring(0, 127), // PayPal max 127 chars
           customId: paymentData.orderId,
         },
       ],
       applicationContext: {
         brandName: 'EmaScript Trading Bots',
-        landingPage: 'NO_PREFERENCE',
-        userAction: 'PAY_NOW',
         returnUrl: PAYPAL_CONFIG.returnUrl,
         cancelUrl: PAYPAL_CONFIG.cancelUrl,
-        paymentMethod: {
-          paypal: {
-            experienceContext: {
-              paymentMethodPreference: 'IMMEDIATE_PAYMENT_REQUIRED',
-              brandName: 'EmaScript Trading Bots',
-              locale: 'en-US',
-              landingPage: 'NO_PREFERENCE',
-              shippingPreference: 'NO_SHIPPING',
-              userAction: 'PAY_NOW',
-              returnUrl: PAYPAL_CONFIG.returnUrl,
-              cancelUrl: PAYPAL_CONFIG.cancelUrl,
-            },
-          },
-        } as PaymentSource,
-      } as ApplicationContext,
+        shippingPreference: 'NO_SHIPPING', // Digital goods - no shipping needed
+        locale: 'en-US',
+        userAction: 'PAY_NOW', // Show "Pay Now" button instead of "Continue"
+      } as OrderApplicationContext,
     };
 
-    const request: OrdersCreateRequest = {
-      orderRequest,
-    };
+    console.log('Creating PayPal order with request:', {
+      intent: orderRequest.intent,
+      amount: orderRequest.purchaseUnits?.[0]?.amount,
+      returnUrl: orderRequest.applicationContext?.returnUrl,
+      cancelUrl: orderRequest.applicationContext?.cancelUrl,
+    });
 
-    const response = await ordersApi.ordersCreate(request);
+    const response = await ordersController.createOrder({ body: orderRequest });
+    
+    console.log('PayPal order creation response:', {
+      hasResult: !!response.result,
+      orderId: response.result?.id,
+      status: response.result?.status,
+      links: response.result?.links?.map((l: any) => ({ rel: l.rel, href: l.href })),
+    });
     
     if (response.result?.id) {
-      // Find the approval URL
-      const approvalUrl = response.result.links?.find(link => link.rel === 'approve')?.href;
+      // Find the approval URL from the links array
+      const approvalUrl = response.result.links?.find((link: any) => link.rel === 'approve')?.href;
+      
+      if (!approvalUrl) {
+        return {
+          success: false,
+          error: 'Failed to get PayPal approval URL from order response',
+        };
+      }
       
       return {
         success: true,
         paymentUrl: approvalUrl,
         transactionId: response.result.id,
+        orderId: response.result.id,
       };
     } else {
       return {
         success: false,
-        error: 'Failed to create PayPal order',
+        error: 'Failed to create PayPal order - invalid response',
       };
     }
-  } catch (error) {
-    console.error('Error initializing PayPal payment:', error);
+  } catch (error: any) {
+    console.error('Error initializing PayPal payment:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+    });
+    
+    // Extract detailed error message
+    let errorMessage = 'Failed to initialize PayPal payment';
+    
+    if (error.response?.data) {
+      // PayPal API error response
+      if (error.response.data.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response.data.details && error.response.data.details.length > 0) {
+        errorMessage = error.response.data.details[0].description || error.response.data.details[0].issue || errorMessage;
+      } else if (error.response.data.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response.data.error_description) {
+        errorMessage = error.response.data.error_description;
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     return {
       success: false,
-      error: 'Failed to initialize PayPal payment',
+      error: errorMessage,
     };
   }
 }
 
-// Capture PayPal payment
-export async function capturePayPalPayment(orderId: string): Promise<PaymentResponse> {
+/**
+ * Capture PayPal payment
+ * Captures the payment after customer approves the order
+ * Documentation: https://developer.paypal.com/docs/api/orders/v2/#orders_capture
+ */
+export async function capturePayPalPayment(
+  orderId: string
+): Promise<PayPalPaymentResponse> {
   try {
     const paypalClient = getPayPalClient();
-    const ordersApi = new OrdersApi(paypalClient);
+    const ordersController = new OrdersController(paypalClient);
 
-    const response = await ordersApi.ordersCapture({
+    const response = await ordersController.captureOrder({
       id: orderId,
-      orderActionRequest: {
-        paymentSource: {
-          paypal: {
-            experienceContext: {
-              paymentMethodPreference: 'IMMEDIATE_PAYMENT_REQUIRED',
-              brandName: 'EmaScript Trading Bots',
-              locale: 'en-US',
-              landingPage: 'NO_PREFERENCE',
-              shippingPreference: 'NO_SHIPPING',
-              userAction: 'PAY_NOW',
-            },
-          },
-        } as PaymentSource,
-      },
+      body: {} as OrderCaptureRequest,
     });
 
     const status = response.result?.status;
+    const captureId = response.result?.purchaseUnits?.[0]?.payments?.captures?.[0]?.id;
     
     return {
       success: status === 'COMPLETED',
-      transactionId: orderId,
+      transactionId: captureId || orderId,
+      orderId: orderId,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error capturing PayPal payment:', error);
+    const errorMessage = error.message || 
+                        error.response?.data?.message ||
+                        'Failed to capture PayPal payment';
     return {
       success: false,
-      error: 'Failed to capture PayPal payment',
+      error: errorMessage,
+      orderId: orderId,
     };
   }
 }
 
-// Get PayPal order details
-export async function getPayPalOrderDetails(orderId: string): Promise<PaymentResponse> {
+/**
+ * Get PayPal order details
+ * Retrieve order information to check payment status
+ * Documentation: https://developer.paypal.com/docs/api/orders/v2/#orders_get
+ */
+export async function getPayPalOrderDetails(
+  orderId: string
+): Promise<PayPalPaymentResponse> {
   try {
     const paypalClient = getPayPalClient();
-    const ordersApi = new OrdersApi(paypalClient);
+    const ordersController = new OrdersController(paypalClient);
 
-    const response = await ordersApi.ordersGet({ id: orderId });
+    const response = await ordersController.getOrder({ id: orderId });
     const status = response.result?.status;
     
     return {
       success: status === 'COMPLETED',
       transactionId: orderId,
+      orderId: orderId,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error getting PayPal order details:', error);
+    const errorMessage = error.message || 
+                        error.response?.data?.message ||
+                        'Failed to get PayPal order details';
     return {
       success: false,
-      error: 'Failed to get PayPal order details',
+      error: errorMessage,
+      orderId: orderId,
     };
   }
 }
 
-// Verify PayPal webhook signature
-export async function verifyPayPalWebhook(headers: any, body: string): Promise<boolean> {
+/**
+ * Verify PayPal webhook signature
+ * Validates that webhook requests are from PayPal
+ * Documentation: https://developer.paypal.com/docs/api-basics/notifications/webhooks/notification-messages/
+ * 
+ * Note: Full webhook verification requires additional implementation
+ * This is a placeholder - implement full signature verification for production
+ */
+export async function verifyPayPalWebhook(
+  headers: any, 
+  body: string
+): Promise<boolean> {
   try {
-    // Note: In production, you should verify the webhook signature
-    // This requires additional implementation using PayPal's webhook verification
-    // For now, we'll return true for development purposes
+    // TODO: Implement full webhook signature verification
+    // This should verify:
+    // 1. PayPal-Transmission-Id header
+    // 2. PayPal-Transmission-Time header
+    // 3. PayPal-Cert-Url header
+    // 4. PayPal-Transmission-Sig header
+    // 5. Certificate chain validation
+    // See: https://developer.paypal.com/docs/api-basics/notifications/webhooks/notification-messages/#verify-webhook-signatures
+    
+    // For development, return true
+    // In production, implement proper signature verification
     return true;
   } catch (error) {
     console.error('Error verifying PayPal webhook:', error);

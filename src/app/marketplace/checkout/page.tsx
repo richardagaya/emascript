@@ -75,18 +75,34 @@ export default function CheckoutPage() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        // Success - redirect to payment gateway or show success message
-        alert(`Order submitted successfully!\nOrder ID: ${data.orderId}\n\nYou will be redirected to ${method} payment.`);
-        // TODO: Redirect to actual payment gateway
-        // window.location.href = data.paymentUrl;
+      if (response.ok && data.success) {
+        // M-Pesa STK Push - no redirect URL, show instructions
+        if (method === 'mpesa') {
+          alert(
+            `✅ Payment Request Sent!\n\n` +
+            `Order ID: ${data.orderId}\n` +
+            `Transaction ID: ${data.transactionId}\n\n` +
+            `Please check your phone and enter your M-Pesa PIN to complete the payment.\n` +
+            `You will receive a confirmation email once the payment is processed.`
+          );
+          // Redirect to dashboard or order status page
+          router.push('/dashboard');
+        } 
+        // Pesapal and PayPal - redirect to payment gateway
+        else if (data.paymentUrl) {
+          // Redirect to payment gateway
+          window.location.href = data.paymentUrl;
+        } else {
+          alert(`Order submitted successfully!\nOrder ID: ${data.orderId}\n\nYou will receive a confirmation email shortly.`);
+          router.push('/dashboard');
+        }
       } else {
         // Error
-        alert(`Error: ${data.error || 'Failed to process order'}`);
+        alert(`Payment Error: ${data.error || 'Failed to process order. Please try again.'}`);
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      alert('An error occurred. Please try again.');
+      alert('An error occurred. Please check your connection and try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -122,12 +138,12 @@ export default function CheckoutPage() {
               placeholder="Your email"
               className="px-4 py-3 rounded-lg border border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:bg-gray-800 dark:border-gray-600 dark:focus:border-blue-400 dark:text-gray-100 w-full"
               value={email}
+              onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
-              readOnly
-              title="Email from your account"
+              title="Email address for order confirmation"
             />
             <p className="text-xs text-black/60 dark:text-white/60 mt-1 ml-1">
-              Using email from your account
+              Pre-filled from your account. You can edit if needed.
             </p>
           </div>
           <PhoneInput
@@ -147,26 +163,18 @@ export default function CheckoutPage() {
         </form>
         <div className="flex flex-col gap-4">
           <button
-            onClick={() => handlePay('mpesa')}
-            className="py-3 px-6 flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-green-500 to-green-600 text-white font-medium hover:from-green-600 hover:to-green-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!canProceed}
+            onClick={() => {}}
+            className="py-3 px-6 flex items-center justify-center gap-3 rounded-full bg-gray-400 dark:bg-gray-600 text-white font-medium cursor-not-allowed opacity-60 transition-all shadow-lg"
+            disabled={true}
+            title="Coming Soon"
           >
-            {isProcessing ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                Processing...
-              </>
-            ) : (
-              <>
-              <svg className="w-7 h-7" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="512" height="512" rx="100" fill="white"/>
-                <path d="M156 180h86c28 0 42 14 42 42 0 28-14 42-42 42h-56v56h56c28 0 42 14 42 42s-14 42-42 42h-86V180z" fill="#62B843"/>
-                <path d="M284 180h28v184h-28V180z" fill="#62B843"/>
-                <circle cx="298" cy="150" r="18" fill="#62B843"/>
-              </svg>
-              Pay with M-PESA
-              </>
-            )}
+            <svg className="w-7 h-7 opacity-50" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="512" height="512" rx="100" fill="white"/>
+              <path d="M156 180h86c28 0 42 14 42 42 0 28-14 42-42 42h-56v56h56c28 0 42 14 42 42s-14 42-42 42h-86V180z" fill="#62B843"/>
+              <path d="M284 180h28v184h-28V180z" fill="#62B843"/>
+              <circle cx="298" cy="150" r="18" fill="#62B843"/>
+            </svg>
+            Pay with M-PESA <span className="text-xs ml-1">(Coming Soon)</span>
           </button>
           <button
             onClick={() => handlePay('pesapal')}

@@ -37,22 +37,42 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch user's purchased EAs from Firestore
-    const usersRef = adminDb.collection('users');
-    const userQuery = await usersRef.where('email', '==', userEmail).limit(1).get();
+    try {
+      const usersRef = adminDb.collection('users');
+      const userQuery = await usersRef.where('email', '==', userEmail).limit(1).get();
 
-    if (userQuery.empty) {
-      // User exists but hasn't purchased anything yet
+      if (userQuery.empty) {
+        // User exists but hasn't purchased anything yet
+        return NextResponse.json({
+          purchasedEAs: [],
+        }, { status: 200 });
+      }
+
+      const userData = userQuery.docs[0].data();
+      const purchasedEAs = userData.purchasedEAs || [];
+
       return NextResponse.json({
-        purchasedEAs: [],
+        purchasedEAs,
       }, { status: 200 });
+    } catch (firestoreError: any) {
+      // Handle Firestore connection errors gracefully
+      if (firestoreError?.code === 5 || firestoreError?.code === 'NOT_FOUND') {
+        console.warn('⚠️  Firestore database not found or not initialized.');
+        console.warn('💡 To fix this:');
+        console.warn('   1. Go to https://console.firebase.google.com/');
+        console.warn('   2. Select your project');
+        console.warn('   3. Click "Firestore Database" in the sidebar');
+        console.warn('   4. Click "Create database" if it doesn\'t exist');
+        console.warn('   5. Choose "Production mode" and select a location');
+        console.warn('   6. Verify your FIREBASE_ADMIN_PROJECT_ID matches your Firebase project');
+        console.warn('   Returning empty array for now.');
+        return NextResponse.json({
+          purchasedEAs: [],
+        }, { status: 200 });
+      }
+      // Re-throw other Firestore errors to be caught by outer catch block
+      throw firestoreError;
     }
-
-    const userData = userQuery.docs[0].data();
-    const purchasedEAs = userData.purchasedEAs || [];
-
-    return NextResponse.json({
-      purchasedEAs,
-    }, { status: 200 });
 
   } catch (error) {
     console.error('Error fetching purchased EAs:', error);
