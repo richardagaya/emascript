@@ -57,14 +57,6 @@ export default function LoginPage() {
     try {
       const auth = getFirebaseAuth();
       const provider = new GoogleAuthProvider();
-      // Customize OAuth to show akavanta.com domain
-      // Note: To fully show akavanta.com in the OAuth popup:
-      // 1. Add akavanta.com as an authorized domain in Firebase Console (Authentication > Settings > Authorized domains)
-      // 2. Update NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN in .env.local to "akavanta.com"
-      // 3. Configure OAuth consent screen in Google Cloud Console to show akavanta.com
-      provider.setCustomParameters({
-        hd: 'akavanta.com', // Hosted domain hint - shows akavanta.com in the OAuth flow
-      });
       provider.addScope('email');
       provider.addScope('profile');
       const cred = await signInWithPopup(auth, provider);
@@ -147,11 +139,13 @@ export default function LoginPage() {
               </label>
               <input
                 id="email"
+                name="email"
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                autoComplete="email"
                 className="w-full rounded-xl border border-black/[.08] dark:border-white/[.145] bg-transparent px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
               />
             </div>
@@ -162,11 +156,13 @@ export default function LoginPage() {
               </label>
               <input
                 id="password"
+                name="password"
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
+                autoComplete={isSignUp ? "new-password" : "current-password"}
                 className="w-full rounded-xl border border-black/[.08] dark:border-white/[.145] bg-transparent px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
               />
               {isSignUp && (

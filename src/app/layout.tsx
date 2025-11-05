@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import Providers from "./providers";
 import TickerTape from "@/components/TickerTape";
 import Footer from "@/components/Footer";
+import EmailCapturePopup from "@/components/EmailCapturePopup";
 
 export const metadata: Metadata = {
   title: "Akavanta | Automated Forex EAs",
@@ -25,6 +26,7 @@ export default function RootLayout({
             <TickerTape />
           </div>
           <main>{children}</main>
+          <EmailCapturePopup />
         </Providers>
         <Footer />
       </body>
