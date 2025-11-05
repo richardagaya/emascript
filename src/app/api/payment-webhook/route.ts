@@ -20,14 +20,6 @@ export async function GET(req: NextRequest) {
     const userAgent = req.headers.get('user-agent') || '';
     const isBrowser = userAgent.includes('Mozilla') || userAgent.includes('Chrome') || userAgent.includes('Safari') || userAgent.includes('Firefox');
     
-    console.log('📥 Webhook GET request received:', {
-      url: req.url,
-      params: allParams,
-      isBrowser,
-      userAgent: userAgent.substring(0, 50),
-      headers: Object.fromEntries(req.headers.entries()),
-    });
-    
     // Check if this is a Pesapal IPN notification (try multiple formats)
     const notificationType = searchParams.get('pesapal_notification_type') || 
                              searchParams.get('NotificationType') || 
@@ -52,12 +44,6 @@ export async function GET(req: NextRequest) {
     
     // Handle Pesapal IPN format (with any parameter name format)
     if (transactionTrackingId && merchantReference) {
-      console.log('📥 Received Pesapal IPN notification:', {
-        notificationType: notificationType || 'not provided',
-        transactionTrackingId,
-        merchantReference,
-      });
-      
       // Get order from Firestore using merchant reference (orderId)
       try {
         const orderRef = adminDb.collection('orders').doc(merchantReference);
@@ -96,8 +82,6 @@ export async function GET(req: NextRequest) {
           if (verification.success || orderData?.status === 'pending') {
             // Payment completed - verify if not already completed
             if (orderData?.status !== 'completed') {
-              console.log(`💳 Processing payment completion for order ${merchantReference} (isBrowser: ${isBrowser})`);
-              
               await orderRef.update({
                 status: 'completed',
                 transactionId: transactionTrackingId,
@@ -106,32 +90,22 @@ export async function GET(req: NextRequest) {
               });
               
               // Add EA to user's account
-              console.log(`📦 Adding EA ${orderData!.botName} to user account ${orderData!.email}`);
               try {
                 await addEAToUserAccount(
                   orderData!.email,
                   orderData!.botName,
                   merchantReference
                 );
-                console.log(`✅ EA added to user account successfully`);
               } catch (eaError: any) {
-                console.error(`❌ Failed to add EA to user account:`, eaError?.message || eaError);
-                console.error('EA error details:', eaError);
+                console.error(`Failed to add EA to user account:`, eaError?.message || eaError);
               }
               
               // Send confirmation email
-              console.log(`📧 Attempting to send confirmation email to ${orderData!.email} for order ${merchantReference}`);
               try {
                 await sendConfirmationEmail(orderData!.email, orderData!.botName, merchantReference);
-                console.log(`✅ Confirmation email sent successfully to ${orderData!.email}`);
               } catch (emailError: any) {
-                console.error(`❌ Failed to send confirmation email to ${orderData!.email}:`, emailError?.message || emailError);
-                console.error('Email error details:', emailError);
+                console.error(`Failed to send confirmation email:`, emailError?.message || emailError);
               }
-              
-              console.log(`✅ Pesapal payment completed for order ${merchantReference}`);
-            } else {
-              console.log(`Order ${merchantReference} already completed`);
             }
           } else {
             // Payment failed or still pending
@@ -142,11 +116,8 @@ export async function GET(req: NextRequest) {
                 transactionId: transactionTrackingId,
                 updatedAt: new Date().toISOString(),
               });
-              console.log(`Order ${merchantReference} status updated to: ${newStatus}`);
             }
           }
-        } else if (orderData?.status === 'completed') {
-          console.log(`Order ${merchantReference} already completed, skipping processing`);
         }
       } catch (firestoreError: any) {
         // Firestore might not be available, but we still need to respond to Pesapal
@@ -155,7 +126,6 @@ export async function GET(req: NextRequest) {
       
       // If this is a browser redirect (user coming back from payment), redirect to dashboard
       if (isBrowser) {
-        console.log(`🔄 Redirecting user to dashboard for order ${merchantReference}`);
         return NextResponse.redirect(new URL(`/dashboard?payment=success&orderId=${merchantReference}`, req.url));
       }
       
@@ -169,11 +139,6 @@ export async function GET(req: NextRequest) {
     
     // Handle generic/test webhook format (for testing or other payment gateways)
     if (orderId && status) {
-      console.log('📥 Received generic webhook notification:', {
-        orderId,
-        status,
-      });
-      
       try {
         const orderRef = adminDb.collection('orders').doc(orderId);
         const orderDoc = await orderRef.get();
@@ -200,8 +165,6 @@ export async function GET(req: NextRequest) {
             // Send confirmation email
             await sendConfirmationEmail(orderData!.email, orderData!.botName, orderId);
             
-            console.log(`✅ Payment completed for order ${orderId}`);
-            
             return NextResponse.json({
               success: true,
               message: 'Payment processed successfully',
@@ -215,9 +178,6 @@ export async function GET(req: NextRequest) {
         console.error('Error processing generic webhook:', error);
       }
     }
-    
-    // Not a valid IPN format, but log what we received for debugging
-    console.warn('⚠️ Not a valid IPN notification format. Received params:', allParams);
     
     // If browser redirect with orderId, redirect to dashboard
     if (isBrowser && orderId) {
@@ -263,12 +223,6 @@ export async function POST(req: NextRequest) {
       transactionId = body.order_tracking_id || body.transaction_id || body.pesapal_transaction_tracking_id;
       paymentMethod = 'pesapal';
       amount = parseFloat(body.amount || '0');
-      
-      console.log('📥 Received Pesapal webhook (POST):', {
-        orderId,
-        transactionId,
-        status,
-      });
       
       // Verify Pesapal payment
       if (transactionId) {
@@ -368,8 +322,6 @@ export async function POST(req: NextRequest) {
       // Send confirmation email
       await sendConfirmationEmail(orderData!.email, orderData!.botName, orderId);
 
-      console.log(`Order ${orderId} completed successfully`);
-      
       return NextResponse.json({
         success: true,
         message: 'Payment processed successfully',
@@ -383,8 +335,6 @@ export async function POST(req: NextRequest) {
         updatedAt: new Date().toISOString(),
       });
 
-      console.log(`Order ${orderId} failed`);
-      
       return NextResponse.json({
         success: false,
         message: 'Payment failed',
@@ -411,8 +361,7 @@ async function addEAToUserAccount(
     const eaData = getEAByName(botName);
     
     if (!eaData) {
-      console.error(`❌ EA not found in catalog: "${botName}"`);
-      console.error(`💡 Make sure the bot name in your order matches exactly: "Akavanta"`);
+      console.error(`EA not found in catalog: "${botName}"`);
       throw new Error(`EA "${botName}" not found in catalog. Please check that the bot name matches exactly.`);
     }
 
@@ -465,13 +414,10 @@ async function addEAToUserAccount(
         purchasedEAs: FieldValue.arrayUnion(purchasedEA),
         updatedAt: new Date().toISOString(),
       });
-      console.log(`✅ EA ${botName} added to user ${email} (Order: ${orderId})`);
-    } else {
-      console.log(`⚠️ EA ${botName} already exists for user ${email} (Order: ${orderId})`);
     }
     
   } catch (error) {
-    console.error('❌ Error adding EA to user account:', error);
+    console.error('Error adding EA to user account:', error);
     throw error;
   }
 }

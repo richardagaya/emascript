@@ -9,13 +9,13 @@ if (!getApps().length) {
   try {
     // Validate required environment variables
     if (!process.env.FIREBASE_ADMIN_PROJECT_ID) {
-      console.error('❌ FIREBASE_ADMIN_PROJECT_ID is not set');
+      console.error('FIREBASE_ADMIN_PROJECT_ID is not set');
     }
     if (!process.env.FIREBASE_ADMIN_CLIENT_EMAIL) {
-      console.error('❌ FIREBASE_ADMIN_CLIENT_EMAIL is not set');
+      console.error('FIREBASE_ADMIN_CLIENT_EMAIL is not set');
     }
     if (!process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
-      console.error('❌ FIREBASE_ADMIN_PRIVATE_KEY is not set');
+      console.error('FIREBASE_ADMIN_PRIVATE_KEY is not set');
     }
 
     adminApp = initializeApp({
@@ -26,15 +26,8 @@ if (!getApps().length) {
       }),
       storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
     });
-    
-    console.log('✅ Firebase Admin SDK initialized successfully');
-    console.log(`   Project ID: ${process.env.FIREBASE_ADMIN_PROJECT_ID}`);
   } catch (error) {
-    console.error('❌ Firebase admin initialization error:', error);
-    console.error('💡 Make sure:');
-    console.error('   1. All Firebase environment variables are set in .env.local');
-    console.error('   2. Firestore database is created in Firebase Console');
-    console.error('   3. Service account has proper permissions');
+    console.error('Firebase admin initialization error:', error);
     throw error; // Re-throw to prevent undefined adminApp usage
   }
 } else {
@@ -52,10 +45,6 @@ export const adminAuth = getAuth(adminApp);
 const databaseId = process.env.FIREBASE_DATABASE_ID || '(default)';
 export const adminDb = getFirestore(adminApp, databaseId);
 
-// Log database configuration
-if (databaseId !== '(default)') {
-  console.log(`   Database ID: ${databaseId}`);
-}
 
 export const adminStorage = getStorage(adminApp);
 

@@ -57,6 +57,16 @@ export default function LoginPage() {
     try {
       const auth = getFirebaseAuth();
       const provider = new GoogleAuthProvider();
+      // Customize OAuth to show akavanta.com domain
+      // Note: To fully show akavanta.com in the OAuth popup:
+      // 1. Add akavanta.com as an authorized domain in Firebase Console (Authentication > Settings > Authorized domains)
+      // 2. Update NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN in .env.local to "akavanta.com"
+      // 3. Configure OAuth consent screen in Google Cloud Console to show akavanta.com
+      provider.setCustomParameters({
+        hd: 'akavanta.com', // Hosted domain hint - shows akavanta.com in the OAuth flow
+      });
+      provider.addScope('email');
+      provider.addScope('profile');
       const cred = await signInWithPopup(auth, provider);
       const idToken = await cred.user.getIdToken();
       await fetch("/api/session", {

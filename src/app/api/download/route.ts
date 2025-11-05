@@ -54,8 +54,7 @@ export async function GET(req: NextRequest) {
     } catch (firestoreError: any) {
       // Handle Firestore connection errors
       if (firestoreError?.code === 5 || firestoreError?.code === 'NOT_FOUND') {
-        console.warn('⚠️  Firestore database not found or not initialized.');
-        console.warn('💡 See check-firestore.js script to diagnose the issue.');
+        console.warn('Firestore database not found or not initialized.');
         return NextResponse.json(
           { error: 'Database not available. Please contact support.' },
           { status: 503 }
@@ -65,6 +64,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (userQuery.empty) {
+      console.error(`User not found in database: ${userEmail}`);
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -100,71 +100,77 @@ export async function GET(req: NextRequest) {
     });
 
     // Generate a signed URL for the file from Firebase Storage
-    // The file should be stored in Firebase Storage at: eas/{eaId}/{version}/{filename}
+    // File is stored at: eas/Akavanta/1.0.0/{filename}
     const bucket = adminStorage.bucket();
     
-    // Handle case variations (EA ID might be lowercase but folder is capitalized)
+    // Capitalize first letter of EA ID (e.g., akavanta -> Akavanta)
     const eaIdCapitalized = eaId.charAt(0).toUpperCase() + eaId.slice(1);
     
-    // Try multiple possible file paths with case variations
-    const possiblePaths = [
-      // Original case
-      `eas/${eaId}/${ea.version}/${eaId}-v${ea.version}.ex4`,
-      `eas/${eaId}/${ea.version}/${eaId}-v${ea.version}.ex5`,
-      `eas/${eaId}/${ea.version}/${eaId}.ex4`,
-      `eas/${eaId}/${ea.version}/${eaId}.ex5`,
-      `eas/${eaId}/${eaId}-v${ea.version}.ex4`,
-      `eas/${eaId}/${eaId}-v${ea.version}.ex5`,
-      `eas/${eaId}/${eaId}.ex4`,
-      `eas/${eaId}/${eaId}.ex5`,
-      // Capitalized case (e.g., Akavanta)
-      `eas/${eaIdCapitalized}/${ea.version}/${eaIdCapitalized}-v${ea.version}.ex4`,
-      `eas/${eaIdCapitalized}/${ea.version}/${eaIdCapitalized}-v${ea.version}.ex5`,
-      `eas/${eaIdCapitalized}/${ea.version}/${eaIdCapitalized}.ex4`,
-      `eas/${eaIdCapitalized}/${ea.version}/${eaIdCapitalized}.ex5`,
-      `eas/${eaIdCapitalized}/${eaIdCapitalized}-v${ea.version}.ex4`,
-      `eas/${eaIdCapitalized}/${eaIdCapitalized}-v${ea.version}.ex5`,
-      `eas/${eaIdCapitalized}/${eaIdCapitalized}.ex4`,
-      `eas/${eaIdCapitalized}/${eaIdCapitalized}.ex5`,
-      // Also check if there's a fileName field in the EA data
-      ...(ea.fileName ? [
-        `eas/${eaId}/${ea.version}/${ea.fileName}`,
-        `eas/${eaId}/${ea.fileName}`,
-        `eas/${eaIdCapitalized}/${ea.version}/${ea.fileName}`,
-        `eas/${eaIdCapitalized}/${ea.fileName}`,
-      ] : []),
-    ];
-
+    // Directory path: eas/Akavanta/1.0.0
+    const directoryPath = `eas/${eaIdCapitalized}/${ea.version}`;
+    
     let file = null;
-    let foundPath = null;
+    let filePath = null;
+    let fileName = null;
 
-    for (const path of possiblePaths) {
-      const testFile = bucket.file(path);
-      const [exists] = await testFile.exists();
-      if (exists) {
-        file = testFile;
-        foundPath = path;
-        break;
+    // First try the expected filename: Akavanta.mq5
+    const expectedPath = `${directoryPath}/${eaIdCapitalized}.mq5`;
+    const expectedFile = bucket.file(expectedPath);
+    const [fileExists] = await expectedFile.exists();
+    
+    if (fileExists) {
+      file = expectedFile;
+      filePath = expectedPath;
+      fileName = `${eaIdCapitalized}.mq5`;
+    } else {
+      // If not found, list all files in the directory to find the actual file
+      try {
+        const [files] = await bucket.getFiles({ prefix: directoryPath + '/' });
+        
+        // Filter out directory entries (files ending with /)
+        const actualFiles = files.filter(f => !f.name.endsWith('/'));
+        
+        // Find any .mq5, .ex4, or .ex5 file, or a file without extension matching the EA name
+        const eaFile = actualFiles.find(f => {
+          const fileName = f.name.split('/').pop() || '';
+          return fileName.endsWith('.mq5') || 
+                 fileName.endsWith('.ex4') || 
+                 fileName.endsWith('.ex5') ||
+                 fileName === eaIdCapitalized || // File named exactly as EA ID (no extension)
+                 fileName.toLowerCase() === eaId.toLowerCase(); // Case-insensitive match
+        });
+        
+        if (eaFile) {
+          file = bucket.file(eaFile.name);
+          filePath = eaFile.name;
+          const foundFileName = eaFile.name.split('/').pop() || `${eaIdCapitalized}.mq5`;
+          fileName = foundFileName;
+          
+          // If file has no extension, add .mq5 as default
+          if (!fileName.includes('.')) {
+            fileName = `${fileName}.mq5`;
+          }
+        } else {
+          console.error(`No matching EA files found in ${directoryPath}`);
+          return NextResponse.json(
+            { error: 'File not found in storage. Please contact support.' },
+            { status: 404 }
+          );
+        }
+      } catch (listError: any) {
+        console.error(`Error listing directory ${directoryPath}:`, listError);
+        return NextResponse.json(
+          { error: 'Error accessing storage. Please contact support.' },
+          { status: 404 }
+        );
       }
     }
-    
-    if (!file || !foundPath) {
-      console.error(`File not found in storage. Tried paths: ${possiblePaths.join(', ')}`);
-      return NextResponse.json(
-        { error: 'File not found in storage. Please contact support.' },
-        { status: 404 }
-      );
-    }
-
-    const fileName = foundPath.split('/').pop() || `${eaId}-v${ea.version}.ex4`;
 
     // Generate a signed URL valid for 1 hour
     const [signedUrl] = await file.getSignedUrl({
       action: 'read',
       expires: Date.now() + 60 * 60 * 1000, // 1 hour
     });
-
-    console.log(`Download initiated for ${eaId} by ${userEmail} from path: ${foundPath}`);
 
     // Return the signed URL
     return NextResponse.json({

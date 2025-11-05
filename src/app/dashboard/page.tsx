@@ -45,6 +45,35 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDownloadGuide = async () => {
+    try {
+      const response = await fetch('/api/download-guide');
+      const data = await response.json();
+
+      if (response.ok && data.downloadUrl) {
+        // Create a temporary link and trigger download
+        const link = document.createElement('a');
+        link.href = data.downloadUrl;
+        link.download = data.fileName || 'mt5-installation-guide.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        alert(`Download failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Download guide error:', error);
+      alert('Failed to download installation guide. Please try again.');
+    }
+  };
+
+  const handleViewDetails = (eaName: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    router.push(`/marketplace/${encodeURIComponent(eaName)}`);
+  };
+
   useEffect(() => {
     // Check for payment success in URL
     const paymentStatus = searchParams.get('payment');
@@ -215,53 +244,65 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {purchasedEAs.map((ea) => (
-              <div
-                key={ea.id}
-                className="rounded-xl border border-black/[.08] dark:border-white/[.145] p-6 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="text-4xl">{ea.thumbnail}</div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                    {ea.license}
-                  </span>
-                </div>
-                
-                <h3 className="font-semibold text-lg mb-1">{ea.name}</h3>
-                <p className="text-xs text-black/60 dark:text-white/60 mb-3">
-                  {ea.description}
-                </p>
-                
-                <div className="flex items-center gap-2 mb-4 text-xs text-black/60 dark:text-white/60">
-                  <span>v{ea.version}</span>
-                  <span>•</span>
-                  <span>Purchased {new Date(ea.purchaseDate).toLocaleDateString()}</span>
-                </div>
-                
-                <div className="flex gap-2">
+            {purchasedEAs.map((ea) => {
+              const purchaseDate = new Date(ea.purchaseDate);
+              
+              return (
+                <div
+                  key={ea.id}
+                  className="rounded-xl border border-black/[.08] dark:border-white/[.145] p-6 hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="text-4xl">{ea.thumbnail}</div>
+                    <span className="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                      {ea.license}
+                    </span>
+                  </div>
+                  
+                  <h3 className="font-semibold text-lg mb-1">{ea.name}</h3>
+                  <p className="text-xs text-black/60 dark:text-white/60 mb-3 line-clamp-2">
+                    {ea.description}
+                  </p>
+                  
+                  <div className="flex items-center gap-2 mb-4 text-xs text-black/60 dark:text-white/60">
+                    <span>v{ea.version}</span>
+                    <span>•</span>
+                    <span>Purchased {purchaseDate.toLocaleDateString()}</span>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleDownload(ea.eaId, ea.eaName)}
+                      disabled={downloading === ea.eaId}
+                      className="flex-1 rounded-lg bg-foreground text-background px-4 py-2 text-sm font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {downloading === ea.eaId ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-background"></div>
+                          Downloading...
+                        </>
+                      ) : (
+                        'Download'
+                      )}
+                    </button>
+                    <button 
+                      onClick={handleDownloadGuide}
+                      className="rounded-lg border border-black/[.08] dark:border-white/[.145] px-4 py-2 text-sm font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06] transition text-center flex items-center gap-1"
+                      title="Download MT5 Installation Guide (PDF)"
+                    >
+                      <span>📄</span>
+                      PDF Guide
+                    </button>
+                  </div>
                   <button 
-                    onClick={() => handleDownload(ea.eaId, ea.eaName)}
-                    disabled={downloading === ea.eaId}
-                    className="flex-1 rounded-lg bg-foreground text-background px-4 py-2 text-sm font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    onClick={(e) => handleViewDetails(ea.name, e)}
+                    className="w-full mt-2 rounded-lg border border-black/[.08] dark:border-white/[.145] px-4 py-2 text-sm font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06] transition"
                   >
-                    {downloading === ea.eaId ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-background"></div>
-                        Downloading...
-                      </>
-                    ) : (
-                      'Download'
-                    )}
+                    View details
                   </button>
-                  <a 
-                    href="/installation-guide"
-                    className="rounded-lg border border-black/[.08] dark:border-white/[.145] px-4 py-2 text-sm font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06] transition text-center"
-                  >
-                    Guide
-                  </a>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
