@@ -1,4 +1,3 @@
-import Image from "next/image";
 import AccordionFAQ from "@/components/AccordionFAQ";
 
 export default function Home() {
@@ -6,9 +5,9 @@ export default function Home() {
     <div className="font-sans">
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-24 grid gap-8 sm:gap-12 lg:grid-cols-2 items-center">
-          <div>
-            <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-16 lg:py-24">
+          <div className="max-w-2xl">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight">
               Automated EA Trading Bots
             </h1>
             <p className="mt-4 text-base sm:text-lg text-black/70 dark:text-white/70 max-w-prose">
@@ -22,16 +21,9 @@ export default function Home() {
               >
                 View marketplace
               </a>
-             
             </div>
             <div className="mt-6 text-xs text-black/60 dark:text-white/60">
               Works with MT4/MT5.
-            </div>
-          </div>
-          <div className="relative aspect-video w-full rounded-xl border border-black/[.08] dark:border-white/[.145] bg-[radial-gradient(circle_at_30%_30%,rgba(0,0,0,0.05),transparent_60%)] dark:bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.08),transparent_60%)] flex items-center justify-center">
-            <div className="text-center">
-              <Image src="/next.svg" alt="Placeholder" width={120} height={26} className="mx-auto opacity-60 dark:invert" />
-              <p className="mt-3 text-sm text-black/60 dark:text-white/60">Strategy equity curve preview</p>
             </div>
           </div>
         </div>

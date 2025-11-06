@@ -117,7 +117,6 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <a href="#buy" className="rounded-full bg-foreground text-background px-4 py-2 font-medium hover:opacity-90">Buy now</a>
               <a
                 href="/login"
                 className="rounded-full border border-black/[.08] dark:border-white/[.145] px-4 py-2 font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06]"
@@ -170,13 +169,6 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <a
-                href="#buy"
-                className="rounded-full bg-foreground text-background px-4 py-2 font-medium hover:opacity-90 text-center"
-                onClick={closeMenu}
-              >
-                Buy now
-              </a>
               <a
                 href="/login"
                 className="rounded-full border border-black/[.08] dark:border-white/[.145] px-4 py-2 font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06] text-center"
