@@ -4,8 +4,6 @@ export interface EA {
   desc: string;
   price: number;
   category: string;
-  rating: number;
-  reviews: number;
   image: string;
   version: string;
   lastUpdated: string;
@@ -32,11 +30,9 @@ export const EA_DATA: Record<string, EA> = {
   "Nitroflow": {
     name: "Nitroflow",
     desc: "Catches breakouts with momentum confirmation. Includes false breakout protection.",
-    price: 229,
+    price:199,
     category: "Breakout",
-    rating: 4.9,
-    reviews: 203,
-    image: "/next.svg",
+    image: "/Nitroflow.png",
     version: "2.5.0",
     lastUpdated: "2024-02-10",
     features: [
@@ -72,11 +68,9 @@ export const EA_DATA: Record<string, EA> = {
   "Kamikaze": {
     name: "Kamikaze",
     desc: "Advanced grid trading with adaptive lot sizing. Built for stable market conditions.",
-    price: 189,
+    price: 159,
     category: "Grid Trading",
-    rating: 4.5,
-    reviews: 94,
-    image: "/next.svg",
+    image: "/Kamikaze.png",
     version: "1.9.3",
     lastUpdated: "2024-01-25",
     features: [
@@ -113,10 +107,8 @@ export const EA_DATA: Record<string, EA> = {
   "Akavanta": {
     name: "Akavanta",
     desc: "Advanced automated trading bot with sophisticated risk management and market analysis.",
-    price: 199,
+    price: 99,
     category: "Trend Following",
-    rating: 4.5,
-    reviews: 0,
     image: "/akavanta.png",
     version: "1.0.0",
     lastUpdated: "2024-12-19",
@@ -155,8 +147,6 @@ export const EA_DATA: Record<string, EA> = {
     desc: "Follows medium-term trends with ATR-based risk management. Perfect for trending markets.",
     price: 199,
     category: "Trend Following",
-    rating: 4.8,
-    reviews: 127,
     image: "/next.svg",
     version: "2.1.0",
     lastUpdated: "2024-01-15",
@@ -195,8 +185,6 @@ export const EA_DATA: Record<string, EA> = {
     desc: "High-frequency scalper with advanced spread filtering. Designed for volatile market conditions.",
     price: 149,
     category: "Scalping",
-    rating: 4.6,
-    reviews: 89,
     image: "/next.svg",
     version: "1.8.5",
     lastUpdated: "2024-02-01",
@@ -235,8 +223,6 @@ export const EA_DATA: Record<string, EA> = {
     desc: "Mean reversion strategy with dynamic grid management. Ideal for ranging markets.",
     price: 179,
     category: "Mean Reversion",
-    rating: 4.7,
-    reviews: 156,
     image: "/next.svg",
     version: "3.0.2",
     lastUpdated: "2024-01-20",
@@ -282,8 +268,6 @@ export function getAllEAs() {
     desc: ea.desc,
     price: ea.price,
     category: ea.category,
-    rating: ea.rating,
-    reviews: ea.reviews,
     image: ea.image
   }));
 }
