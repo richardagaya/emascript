@@ -34,9 +34,18 @@ export default function Home() {
         <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-6">FAQ</h2>
         <AccordionFAQ
           items={[
-            { q: "Which platforms are supported?", a: "Our bots support MT4 and MT5 with standard brokers." },
-            { q: "Do I get updates?", a: "Lifetime updates included for purchased licenses." },
-            { q: "Can I use on multiple accounts?", a: "Depends on license tier; see pricing above." },
+            {
+              q: "Can I run the EA on my phone?",
+              a: "You can monitor trades with the MT5 mobile app, but the EA must run on a desktop or VPS for 24/7 automation.",
+            },
+            {
+              q: "Do you offer refunds?",
+              a: "No refunds after activation, but support will help resolve installation or activation issues.",
+            },
+            {
+              q: "Is the EA guaranteed to make profits?",
+              a: "No EA can guarantee profits—forex trading carries risk, so always trade responsibly.",
+            },
           ]}
         />
       </section>

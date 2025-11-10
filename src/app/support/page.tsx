@@ -29,11 +29,34 @@ export default function SupportPage() {
         <h2 className="text-2xl font-semibold mb-6">Frequently Asked Questions</h2>
         <AccordionFAQ
           items={[
-            { q: "How do I install an EA?", a: "Download from your dashboard, copy to MT4/MT5 Experts, restart, and attach to chart." },
-            { q: "What brokers are supported?", a: "Most standard MT4/MT5 brokers. Prefer low spreads and reliable execution." },
-            { q: "Can I use EAs on multiple accounts?", a: "Starter: 1 account, Pro: 3 accounts, Ultimate: unlimited." },
-            { q: "Do you provide updates?", a: "Yes, lifetime updates are included for purchases." },
-            { q: "Recommended account size?", a: "Depends on risk. Generally $1,000+ conservative, $5,000+ aggressive." },
+            {
+              q: "Can I run the EA on my phone?",
+              a: "You can monitor trades from MT5 mobile, but the EA itself must run on a desktop platform or VPS.",
+            },
+            {
+              q: "Can I modify or re-sell the EA?",
+              a: "No. Every EA is protected Akavanta IP, and modification, resale, or recompilation is prohibited.",
+            },
+            {
+              q: "Do you offer refunds?",
+              a: "We can’t refund once an EA is activated, but our team will troubleshoot install or activation issues.",
+            },
+            {
+              q: "Do you provide account management or signals?",
+              a: "No, we only supply automated trading tools for you to run.",
+            },
+            {
+              q: "Is the EA guaranteed to make profits?",
+              a: "No EA can guarantee profits—trading still carries risk, so manage your exposure carefully.",
+            },
+            {
+              q: "How often should I update my EA settings?",
+              a: "We release optimized set files periodically via email; always test new settings on a demo first.",
+            },
+            {
+              q: "My EA isn’t opening trades—what should I check?",
+              a: "Confirm AutoTrading and live trading permissions are on, the symbol/timeframe is correct, your broker allows algos, and review the Experts and Journal tabs for errors.",
+            },
           ]}
         />
       </section>
