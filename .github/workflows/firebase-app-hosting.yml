@@ -24,8 +24,11 @@ jobs:
         run: npm ci
 
       - name: Create Firebase App Hosting rollout
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: npx --yes firebase-tools apphosting:rollouts:create emascript --project fxpro-2dc0c
+        run: >
+          npx --yes firebase-tools@latest
+          apphosting:rollouts:create emascript
+          --project fxpro-2dc0c
+          --non-interactive
+          --token "${{ secrets.FIREBASE_TOKEN }}"
 
 
