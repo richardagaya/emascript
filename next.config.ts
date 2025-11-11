@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Use standalone output for Cloud Run deployment
-  output: 'standalone',
+  // Firebase App Hosting supports full Next.js features
+  // No special output configuration needed
 };
 
 export default nextConfig;
