@@ -150,7 +150,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Helper function to add EA to user's account
 async function addEAToUserAccount(
   email: string,
   botName: string,
