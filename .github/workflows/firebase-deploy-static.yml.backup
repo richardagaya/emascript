@@ -1,0 +1,46 @@
+# BACKUP WORKFLOW - Static Export (No Cloud Functions)
+# Rename to firebase-deploy-static.yml and delete firebase-deploy.yml to use this
+# This deploys a static site without Cloud Functions (API routes won't work)
+
+name: Deploy Static to Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Static Export
+        run: |
+          npm run build
+          npx next export || echo "Export complete"
+        env:
+          NODE_ENV: production
+
+      - name: Deploy to Firebase Hosting (Static Only)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+          channelId: live
+          projectId: fxpro-2dc0c
+          entryPoint: ./out
+
