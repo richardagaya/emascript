@@ -13,4 +13,14 @@ env:
     secret: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
     secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+  # Pesapal Configuration
+  - variable: PESAPAL_CONSUMER_KEY
+    secret: PESAPAL_CONSUMER_KEY
+  - variable: PESAPAL_CONSUMER_SECRET
+    secret: PESAPAL_CONSUMER_SECRET
+  # Optional: Uncomment if you need to override defaults
+  # - variable: PESAPAL_BASE_URL
+  #   secret: PESAPAL_BASE_URL
+  # - variable: NEXTAUTH_URL
+  #   secret: NEXTAUTH_URL
 

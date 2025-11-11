@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, FormEvent, Suspense } from "react";
+import { useState, FormEvent, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import Link from "next/link";
 
@@ -15,6 +15,35 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
+
+  // Handle redirect result from Google sign-in
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const auth = getFirebaseAuth();
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          setLoading(true);
+          const idToken = await result.user.getIdToken();
+          await fetch("/api/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+          });
+          router.push(callbackUrl);
+        }
+      } catch (err) {
+        const error = err as { code?: string; message?: string };
+        console.error('Redirect sign-in error:', error);
+        if (error?.code !== 'auth/popup-closed-by-user' && error?.code !== 'auth/cancelled-popup-request') {
+          setError("Google sign-in failed. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    handleRedirectResult();
+  }, [router, callbackUrl]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -55,13 +84,22 @@ function LoginContent() {
 
   async function handleGoogle() {
     setError(null);
+    
+    // Prepare auth and provider first
+    const auth = getFirebaseAuth();
+    const provider = new GoogleAuthProvider();
+    provider.addScope('email');
+    provider.addScope('profile');
+    
+    // Call signInWithPopup IMMEDIATELY to preserve user activation
+    // Don't set loading state before this, as it might cause a re-render
+    const popupPromise = signInWithPopup(auth, provider);
+    
+    // Now set loading state after initiating the popup
     setLoading(true);
+    
     try {
-      const auth = getFirebaseAuth();
-      const provider = new GoogleAuthProvider();
-      provider.addScope('email');
-      provider.addScope('profile');
-      const cred = await signInWithPopup(auth, provider);
+      const cred = await popupPromise;
       const idToken = await cred.user.getIdToken();
       await fetch("/api/session", {
         method: "POST",
@@ -69,9 +107,31 @@ function LoginContent() {
         body: JSON.stringify({ idToken }),
       });
       router.push(callbackUrl);
-    } catch {
-      setError("Google sign-in failed. Please try again.");
-    } finally {
+    } catch (err: any) {
+      const error = err as { code?: string; message?: string };
+      console.error('Google sign-in error:', error);
+      
+      // If popup is blocked, fallback to redirect
+      if (
+        error?.code === 'auth/popup-blocked' ||
+        error?.message?.toLowerCase().includes('popup') ||
+        error?.message?.toLowerCase().includes('user activation') ||
+        error?.message?.toLowerCase().includes('multiple popups')
+      ) {
+        try {
+          // Use redirect method as fallback
+          await signInWithRedirect(auth, provider);
+          // Don't set loading to false - we're redirecting
+          return;
+        } catch (redirectError) {
+          console.error('Redirect sign-in error:', redirectError);
+          setError('Sign-in failed. Please try again or allow popups for this site.');
+        }
+      } else if (error?.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in was cancelled. Please try again.');
+      } else {
+        setError("Google sign-in failed. Please try again.");
+      }
       setLoading(false);
     }
   }
