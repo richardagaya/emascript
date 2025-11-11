@@ -18,6 +18,20 @@ This guide will help you set up automatic deployment to Firebase Hosting using G
 6. Click **Generate key** - this will download a JSON file
 7. **Keep this file secure!** It contains sensitive credentials
 
+### Grant Required Permissions
+
+Your service account needs additional permissions for Cloud Functions (required for Next.js with middleware/API routes):
+
+1. Go to [Google Cloud Console IAM](https://console.cloud.google.com/iam-admin/iam)
+2. Select your project: **fxpro-2dc0c**
+3. Find the service account you just created (should look like `firebase-adminsdk-xxxxx@fxpro-2dc0c.iam.gserviceaccount.com`)
+4. Click the pencil icon ✏️ to edit
+5. Click **+ ADD ANOTHER ROLE** and add these roles:
+   - **Firebase Hosting Admin** (if not already added)
+   - **Cloud Functions Developer** or **Cloud Functions Admin**
+   - **Service Account User**
+6. Click **Save**
+
 ## Step 2: Add Firebase Service Account to GitHub Secrets
 
 1. Go to your GitHub repository
@@ -94,14 +108,32 @@ Then add these secrets in GitHub Settings → Secrets and variables → Actions.
 - Ensure all environment variables are properly set
 - Verify that your build runs successfully locally: `npm run build`
 
+### "Failed to list functions" Error
+This happens when your Next.js app has middleware or API routes (which require Cloud Functions) but the service account lacks permissions.
+
+**Solution:**
+1. Go to [Google Cloud Console IAM](https://console.cloud.google.com/iam-admin/iam)
+2. Find your service account
+3. Add these roles:
+   - **Cloud Functions Developer** (or Admin)
+   - **Service Account User**
+   - **Firebase Hosting Admin**
+
+### "webframeworks experiment not enabled" Error
+This is already fixed in the workflow file with `FIREBASE_CLI_EXPERIMENTS: webframeworks`
+
 ### Deployment Fails
 - Verify the Firebase service account JSON is correctly added to GitHub secrets
 - Check that the project ID (fxpro-2dc0c) is correct in the workflow file
 - Ensure your Firebase project has hosting enabled
+- Verify the service account has all required permissions (see above)
 
 ### Permission Errors
-- Make sure the service account has the necessary permissions in Firebase
-- The service account should have "Firebase Hosting Admin" role
+- Make sure the service account has the necessary permissions in Google Cloud Console
+- Required roles for Next.js apps:
+  - Firebase Hosting Admin
+  - Cloud Functions Developer or Admin
+  - Service Account User
 
 ## Additional Configuration
 
