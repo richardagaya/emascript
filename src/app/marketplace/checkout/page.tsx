@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import './checkout.css';
+import { getEAByName } from '@/data/eas';
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
@@ -23,6 +24,7 @@ export default function CheckoutPage() {
   const [email, setEmail] = useState<string>(defaultEmail);
   const [phone, setPhone] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [eaData, setEaData] = useState<{ name: string; price: number } | null>(null);
   
   // Check authentication on mount
   useEffect(() => {
@@ -49,6 +51,16 @@ export default function CheckoutPage() {
       setEmail(authState.displayName);
     }
   }, [authState]);
+
+  // Load EA data to get price
+  useEffect(() => {
+    if (botName) {
+      const ea = getEAByName(botName);
+      if (ea) {
+        setEaData({ name: ea.name, price: ea.price });
+      }
+    }
+  }, [botName]);
 
   const emailValid = Boolean(email.match(/^\S+@\S+\.\S+$/));
   // react-phone-input-2 always outputs in international format
@@ -140,12 +152,16 @@ export default function CheckoutPage() {
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-600 dark:text-gray-400">Price</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">$50.00</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">
+                  {eaData ? `KES ${eaData.price.toFixed(2)}` : 'Loading...'}
+                </p>
               </div>
             </div>
             <div className="flex items-center justify-between pt-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total</span>
-              <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">$50.00</span>
+              <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {eaData ? `KES ${eaData.price.toFixed(2)}` : 'Loading...'}
+              </span>
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { sendOrderPendingEmail } from '@/lib/email';
 import { initializePesapalPayment } from '@/lib/pesapal';
 import { initializeMpesaPayment } from '@/lib/mpesa';
 import { initializePayPalPayment } from '@/lib/paypal';
+import { getEAByName } from '@/data/eas';
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,6 +38,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Get EA data to include price in order
+    const eaData = getEAByName(botName);
+    if (!eaData) {
+      return NextResponse.json(
+        { error: 'EA not found' },
+        { status: 404 }
+      );
+    }
+    
     // Generate a unique order ID
     const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
     
@@ -50,6 +60,8 @@ export async function POST(req: NextRequest) {
       phone,
       paymentMethod,
       userId,
+      price: eaData.price,
+      version: eaData.version,
       status: 'pending',
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -86,12 +98,15 @@ export async function POST(req: NextRequest) {
       error: '' 
     };
     
+    // Use price from EA data (already fetched above)
+    const priceUSD = eaData.price;
+    
     // Determine currency based on payment method
     // M-Pesa uses KES (Kenyan Shillings), others use USD
     const currency = paymentMethod === 'mpesa' ? 'KES' : 'USD';
     // Convert USD to KES if using M-Pesa (approximate rate: 1 USD = 130 KES)
     const exchangeRate = 130; // TODO: Use actual exchange rate API
-    const amount = paymentMethod === 'mpesa' ? 50 * exchangeRate : 50;
+    const amount = paymentMethod === 'mpesa' ? priceUSD * exchangeRate : priceUSD;
     
     // Initialize payment based on method
     console.log(`Initializing ${paymentMethod} payment for order ${orderId}...`);

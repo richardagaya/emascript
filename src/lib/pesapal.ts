@@ -13,8 +13,11 @@ function getAppBaseUrl(): string {
          'http://localhost:3000';
 }
 
+// Pesapal Production Configuration
+// Production URL: https://api.pesapal.com
+// Sandbox URL: https://cybqa.pesapal.com
 const PESAPAL_CONFIG = {
-  baseUrl: process.env.PESAPAL_BASE_URL || 'https://api.pesapal.com',
+  baseUrl: process.env.PESAPAL_BASE_URL || 'https://api.pesapal.com', // Production URL (default)
   consumerKey: process.env.PESAPAL_CONSUMER_KEY,
   consumerSecret: process.env.PESAPAL_CONSUMER_SECRET,
   // Use PESAPAL_CALLBACK_URL if set, otherwise construct from base URL

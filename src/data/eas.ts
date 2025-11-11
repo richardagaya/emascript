@@ -30,10 +30,10 @@ export const EA_DATA: Record<string, EA> = {
   "Nitroflow": {
     name: "Nitroflow",
     desc: "Catches breakouts with momentum confirmation. Includes false breakout protection.",
-    price:199,
+    price: 1, // 1 KES for production testing
     category: "Breakout",
     image: "/Nitroflow.png",
-    version: "2.5.0",
+    version: "1.0.0",
     lastUpdated: "2024-02-10",
     features: [
       "Breakout detection algorithm",
@@ -68,10 +68,10 @@ export const EA_DATA: Record<string, EA> = {
   "Kamikaze": {
     name: "Kamikaze",
     desc: "Advanced grid trading with adaptive lot sizing. Built for stable market conditions.",
-    price: 159,
+    price: 1, // 1 KES for production testing
     category: "Grid Trading",
     image: "/Kamikaze.png",
-    version: "1.9.3",
+    version: "1.0.0",
     lastUpdated: "2024-01-25",
     features: [
       "Adaptive grid spacing",
@@ -107,7 +107,7 @@ export const EA_DATA: Record<string, EA> = {
   "Akavanta": {
     name: "Akavanta",
     desc: "Advanced automated trading bot with sophisticated risk management and market analysis.",
-    price: 99,
+    price: 1, // 1 KES for production testing
     category: "Trend Following",
     image: "/akavanta.png",
     version: "1.0.0",
@@ -145,7 +145,7 @@ export const EA_DATA: Record<string, EA> = {
   "Apexflow": {
     name: "Apexflow",
     desc: "Follows medium-term trends with ATR-based risk management. Perfect for trending markets.",
-    price: 199,
+    price: 1, // 1 KES for production testing
     category: "Trend Following",
     image: "/next.svg",
     version: "2.1.0",
@@ -183,7 +183,7 @@ export const EA_DATA: Record<string, EA> = {
   "Zenmatrix": {
     name: "Zenmatrix",
     desc: "High-frequency scalper with advanced spread filtering. Designed for volatile market conditions.",
-    price: 149,
+    price: 1, // 1 KES for production testing
     category: "Scalping",
     image: "/next.svg",
     version: "1.8.5",
@@ -221,7 +221,7 @@ export const EA_DATA: Record<string, EA> = {
   "Tradeforge": {
     name: "Tradeforge",
     desc: "Mean reversion strategy with dynamic grid management. Ideal for ranging markets.",
-    price: 179,
+    price: 1, // 1 KES for production testing
     category: "Mean Reversion",
     image: "/next.svg",
     version: "3.0.2",
