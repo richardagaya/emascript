@@ -62,7 +62,7 @@ jobs:
         continue-on-error: true
 
       - name: Deploy to Firebase
-        run: firebase deploy --only hosting --project fxpro-2dc0c --non-interactive
+        run: firebase deploy --only hosting --project fxpro-2dc0c --non-interactive --force
         env:
           FIREBASE_CLI_EXPERIMENTS: webframeworks
 
