@@ -35,9 +35,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: |
-          npm install --include=dev
-          npm install typescript --save-dev
+        run: npm install
 
       - name: Build Next.js application
         run: npm run build
