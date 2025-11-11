@@ -84,22 +84,35 @@ function LoginContent() {
 
   async function handleGoogle() {
     setError(null);
+    setLoading(true);
     
-    // Prepare auth and provider first
     const auth = getFirebaseAuth();
     const provider = new GoogleAuthProvider();
     provider.addScope('email');
     provider.addScope('profile');
     
-    // Call signInWithPopup IMMEDIATELY to preserve user activation
-    // Don't set loading state before this, as it might cause a re-render
-    const popupPromise = signInWithPopup(auth, provider);
+    // In production, use redirect by default for better reliability
+    // Popups are often blocked due to browser security policies
+    const isProduction = process.env.NODE_ENV === 'production' || 
+                         window.location.hostname !== 'localhost';
     
-    // Now set loading state after initiating the popup
-    setLoading(true);
+    if (isProduction) {
+      // Use redirect method in production (more reliable)
+      try {
+        await signInWithRedirect(auth, provider);
+        // Don't set loading to false - we're redirecting
+        return;
+      } catch (redirectError) {
+        console.error('Redirect sign-in error:', redirectError);
+        setError('Sign-in failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+    }
     
+    // Try popup in development (better UX)
     try {
-      const cred = await popupPromise;
+      const cred = await signInWithPopup(auth, provider);
       const idToken = await cred.user.getIdToken();
       await fetch("/api/session", {
         method: "POST",
@@ -111,15 +124,19 @@ function LoginContent() {
       const error = err as { code?: string; message?: string };
       console.error('Google sign-in error:', error);
       
-      // If popup is blocked, fallback to redirect
-      if (
+      // Check for popup blocking errors (including the specific error message)
+      const isPopupBlocked = 
         error?.code === 'auth/popup-blocked' ||
+        error?.code === 'auth/popup-closed-by-user' ||
+        error?.code === 'auth/cancelled-popup-request' ||
         error?.message?.toLowerCase().includes('popup') ||
         error?.message?.toLowerCase().includes('user activation') ||
-        error?.message?.toLowerCase().includes('multiple popups')
-      ) {
+        error?.message?.toLowerCase().includes('multiple popups') ||
+        error?.message?.toLowerCase().includes('blocked');
+      
+      if (isPopupBlocked) {
         try {
-          // Use redirect method as fallback
+          // Fallback to redirect method
           await signInWithRedirect(auth, provider);
           // Don't set loading to false - we're redirecting
           return;
