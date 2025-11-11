@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
+import Link from "next/link";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
@@ -31,17 +32,18 @@ export default function LoginPage() {
         body: JSON.stringify({ idToken }),
       });
       router.push(callbackUrl);
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as { code?: string };
       // Provide better error messages
-      if (err?.code === 'auth/user-not-found') {
+      if (error?.code === 'auth/user-not-found') {
         setError('No account found with this email');
-      } else if (err?.code === 'auth/wrong-password') {
+      } else if (error?.code === 'auth/wrong-password') {
         setError('Incorrect password');
-      } else if (err?.code === 'auth/email-already-in-use') {
+      } else if (error?.code === 'auth/email-already-in-use') {
         setError('Email already in use');
-      } else if (err?.code === 'auth/weak-password') {
+      } else if (error?.code === 'auth/weak-password') {
         setError('Password should be at least 6 characters');
-      } else if (err?.code === 'auth/invalid-email') {
+      } else if (error?.code === 'auth/invalid-email') {
         setError('Invalid email address');
       } else {
         setError(isSignUp ? 'Failed to create account. Please try again.' : 'Failed to sign in. Please check your credentials.');
@@ -67,7 +69,7 @@ export default function LoginPage() {
         body: JSON.stringify({ idToken }),
       });
       router.push(callbackUrl);
-    } catch (err) {
+    } catch {
       setError("Google sign-in failed. Please try again.");
     } finally {
       setLoading(false);
@@ -79,11 +81,11 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo/Brand */}
         <div className="text-center mb-8">
-          <a href="/" className="inline-block">
+          <Link href="/" className="inline-block">
             <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Akavanta
             </h1>
-          </a>
+          </Link>
           <p className="mt-2 text-sm text-black/60 dark:text-white/60">
             Automated Trading Solutions
           </p>
@@ -238,4 +240,14 @@ export default function LoginPage() {
   );
 }
 
-
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
+  );
+}

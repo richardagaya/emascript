@@ -94,7 +94,7 @@ export default function SupportPage() {
       <section className="rounded-xl border border-black/[.08] dark:border-white/[.145] p-6 bg-black/[.02] dark:bg-white/[.02]">
         <h2 className="text-xl font-semibold mb-4">Need More Help?</h2>
         <p className="text-black/70 dark:text-white/70 mb-4">
-          Can't find what you're looking for? Our support team is here to help you succeed with your trading automation.
+          Can&apos;t find what you&apos;re looking for? Our support team is here to help you succeed with your trading automation.
         </p>
         <a 
           href="mailto:support@akavanta.com"

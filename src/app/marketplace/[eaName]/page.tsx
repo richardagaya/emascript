@@ -1,9 +1,7 @@
 "use client";
-import Image from "next/image";
 import { useRouter, useParams } from 'next/navigation';
 import { useAtom } from 'jotai';
 import { authStateAtom } from '@/state/atoms';
-import { useState, useEffect } from 'react';
 import { getEAByName } from '@/data/eas';
 
 // Import EA data from centralized data file

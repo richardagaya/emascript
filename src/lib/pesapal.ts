@@ -81,11 +81,12 @@ async function getPesapalAccessToken(): Promise<string> {
     }
 
     return response.data.token;
-  } catch (error: any) {
-    console.error('Error getting Pesapal access token:', error.response?.data || error.message);
+  } catch (error) {
+    const err = error as { response?: { data?: { message?: string; error?: string } }; message?: string };
+    console.error('Error getting Pesapal access token:', err.response?.data || err.message);
     throw new Error(
-      error.response?.data?.message || 
-      error.response?.data?.error || 
+      err.response?.data?.message || 
+      err.response?.data?.error || 
       'Failed to get Pesapal access token'
     );
   }
@@ -108,26 +109,19 @@ export async function initializePesapalPayment(
     // 1. A registered IPN ID (from registerPesapalIPN)
     // 2. An IPN URL (Pesapal will use it directly)
     // We use the URL directly for simplicity
-    const paymentRequest: any = {
+    const paymentRequest = {
       id: paymentData.orderId, // Unique order ID
       currency: paymentData.currency, // Currency code (KES, USD, etc.)
       amount: paymentData.amount, // Payment amount
       description: paymentData.description, // Order description
       callback_url: PESAPAL_CONFIG.callbackUrl, // URL to redirect after payment
+      notification_id: process.env.PESAPAL_IPN_ID || PESAPAL_CONFIG.ipnUrl,
       billing_address: {
         phone_number: paymentData.phoneNumber,
         email_address: paymentData.email,
         country_code: 'KE', // ISO country code
       },
     };
-    
-    // Use IPN ID if configured, otherwise use IPN URL
-    // Pesapal v3 supports both formats
-    if (process.env.PESAPAL_IPN_ID) {
-      paymentRequest.notification_id = process.env.PESAPAL_IPN_ID;
-    } else {
-      paymentRequest.notification_id = PESAPAL_CONFIG.ipnUrl;
-    }
 
     // Handle base URL format - if it already ends with /pesapalv3, use it as-is
     // Otherwise, append /api/Transactions/SubmitOrderRequest
@@ -193,24 +187,42 @@ export async function initializePesapalPayment(
         error: `Invalid response from Pesapal API - missing redirect URL. Response: ${JSON.stringify(response.data)}`,
       };
     }
-  } catch (error: any) {
+  } catch (error) {
+    const err = error as {
+      message?: string;
+      response?: {
+        status?: number;
+        statusText?: string;
+        data?: {
+          message?: string;
+          error?: string;
+          error_description?: string;
+          errorMessage?: string;
+        };
+      };
+      config?: {
+        url?: string;
+        method?: string;
+        headers?: Record<string, string>;
+      };
+    };
     console.error('❌ Error initializing Pesapal payment:', {
-      message: error.message,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
+      message: err.message,
+      status: err.response?.status,
+      statusText: err.response?.statusText,
+      data: err.response?.data,
       config: {
-        url: error.config?.url,
-        method: error.config?.method,
-        headers: error.config?.headers,
+        url: err.config?.url,
+        method: err.config?.method,
+        headers: err.config?.headers,
       },
     });
     
-    const errorMessage = error.response?.data?.message || 
-                        error.response?.data?.error || 
-                        error.response?.data?.error_description ||
-                        error.response?.data?.errorMessage ||
-                        error.message || 
+    const errorMessage = err.response?.data?.message || 
+                        err.response?.data?.error || 
+                        err.response?.data?.error_description ||
+                        err.response?.data?.errorMessage ||
+                        err.message || 
                         'Failed to initialize Pesapal payment';
     
     return {
@@ -263,12 +275,13 @@ export async function registerPesapalIPN(ipnUrl: string): Promise<{ success: boo
         error: 'Invalid response from Pesapal IPN registration',
       };
     }
-  } catch (error: any) {
-    console.error('Error registering Pesapal IPN:', error.response?.data || error.message);
+  } catch (error) {
+    const err = error as { response?: { data?: { message?: string } }; message?: string };
+    console.error('Error registering Pesapal IPN:', err.response?.data || err.message);
     // IPN might already be registered, so we don't fail completely
     return {
       success: false,
-      error: error.response?.data?.message || 'Failed to register Pesapal IPN',
+      error: err.response?.data?.message || 'Failed to register Pesapal IPN',
     };
   }
 }
@@ -311,11 +324,12 @@ export async function verifyPesapalPayment(
       transactionId: orderTrackingId,
       orderTrackingId: orderTrackingId,
     };
-  } catch (error: any) {
-    console.error('Error verifying Pesapal payment:', error.response?.data || error.message);
-    const errorMessage = error.response?.data?.message || 
-                        error.response?.data?.error ||
-                        error.message || 
+  } catch (error) {
+    const err = error as { response?: { data?: { message?: string; error?: string } }; message?: string };
+    console.error('Error verifying Pesapal payment:', err.response?.data || err.message);
+    const errorMessage = err.response?.data?.message || 
+                        err.response?.data?.error ||
+                        err.message || 
                         'Failed to verify Pesapal payment';
     return {
       success: false,

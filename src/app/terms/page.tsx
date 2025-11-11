@@ -11,7 +11,7 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4">1. Acceptance of Terms</h2>
           <p className="text-black/70 dark:text-white/70 mb-4">
-            By accessing and using Akavanta ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+            By accessing and using Akavanta (&quot;the Service&quot;), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
           </p>
         </section>
 
@@ -31,7 +31,7 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4">3. Disclaimer</h2>
           <p className="text-black/70 dark:text-white/70 mb-4">
-            The materials on Akavanta are provided on an 'as is' basis. Akavanta makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
+            The materials on Akavanta are provided on an &apos;as is&apos; basis. Akavanta makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
           </p>
         </section>
 

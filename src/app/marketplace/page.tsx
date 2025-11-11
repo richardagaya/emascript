@@ -16,7 +16,7 @@ export default function Marketplace() {
   const handleBuyNow = (bot: {
     name: string;
     price: number;
-    [key: string]: any;
+    [key: string]: string | number | boolean;
   }, e?: React.MouseEvent) => {
     // Prevent card click from triggering when clicking Buy Now button
     if (e) {

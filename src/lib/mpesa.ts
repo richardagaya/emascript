@@ -80,9 +80,10 @@ async function getMpesaAccessToken(): Promise<string> {
     }
 
     return response.data.access_token;
-  } catch (error: any) {
-    console.error('Error getting M-Pesa access token:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.error_description || 'Failed to get M-Pesa access token');
+  } catch (error) {
+    const err = error as { response?: { data?: { error_description?: string } }; message?: string };
+    console.error('Error getting M-Pesa access token:', err.response?.data || err.message);
+    throw new Error(err.response?.data?.error_description || 'Failed to get M-Pesa access token');
   }
 }
 
@@ -159,12 +160,22 @@ export async function initializeMpesaPayment(
         customerMessage: response.data.CustomerMessage,
       };
     }
-  } catch (error: any) {
-    console.error('Error initializing M-Pesa payment:', error.response?.data || error.message);
-    const errorMessage = error.response?.data?.errorMessage || 
-                        error.response?.data?.error_description ||
-                        error.response?.data?.ResponseDescription ||
-                        error.message || 
+  } catch (error) {
+    const err = error as { 
+      response?: { 
+        data?: { 
+          errorMessage?: string; 
+          error_description?: string; 
+          ResponseDescription?: string; 
+        }; 
+      }; 
+      message?: string; 
+    };
+    console.error('Error initializing M-Pesa payment:', err.response?.data || err.message);
+    const errorMessage = err.response?.data?.errorMessage || 
+                        err.response?.data?.error_description ||
+                        err.response?.data?.ResponseDescription ||
+                        err.message || 
                         'Failed to initialize M-Pesa payment';
     return {
       success: false,
@@ -237,11 +248,20 @@ export async function verifyMpesaPayment(
         transactionId: checkoutRequestId,
       };
     }
-  } catch (error: any) {
-    console.error('Error verifying M-Pesa payment:', error.response?.data || error.message);
-    const errorMessage = error.response?.data?.errorMessage || 
-                        error.response?.data?.ResultDesc ||
-                        error.message || 
+  } catch (error) {
+    const err = error as { 
+      response?: { 
+        data?: { 
+          errorMessage?: string; 
+          ResultDesc?: string; 
+        }; 
+      }; 
+      message?: string; 
+    };
+    console.error('Error verifying M-Pesa payment:', err.response?.data || err.message);
+    const errorMessage = err.response?.data?.errorMessage || 
+                        err.response?.data?.ResultDesc ||
+                        err.message || 
                         'Failed to verify M-Pesa payment';
     return {
       success: false,

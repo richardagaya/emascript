@@ -139,7 +139,7 @@ export async function GET(req: NextRequest) {
 
       // Redirect to success page
       return NextResponse.redirect(new URL(`/dashboard?payment=success&orderId=${orderId}`, req.url));
-    } catch (firestoreError: any) {
+    } catch (firestoreError) {
       console.error('Firestore error processing PayPal return:', firestoreError);
       // Even if Firestore fails, redirect to success (payment was captured)
       return NextResponse.redirect(new URL('/dashboard?payment=success', req.url));
@@ -207,7 +207,7 @@ async function addEAToUserAccount(
     const existingEAs = userData.purchasedEAs || [];
     
     // Check if this exact order already exists
-    const orderExists = existingEAs.some((ea: any) => ea.orderId === orderId);
+    const orderExists = existingEAs.some((ea: { orderId?: string }) => ea.orderId === orderId);
     
     if (!orderExists) {
       await userRef.update({

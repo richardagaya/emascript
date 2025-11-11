@@ -144,14 +144,15 @@ export async function sendConfirmationEmail(
       response: info.response,
     });
     
-  } catch (error: any) {
+  } catch (error) {
+    const err = error as { message?: string; code?: string; command?: string; response?: string };
     console.error('❌ Error sending confirmation email:', {
       email,
       orderId,
-      error: error?.message || error,
-      code: error?.code,
-      command: error?.command,
-      response: error?.response,
+      error: err?.message || error,
+      code: err?.code,
+      command: err?.command,
+      response: err?.response,
     });
     // Re-throw error so caller can handle it
     throw error;

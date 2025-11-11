@@ -274,7 +274,7 @@ export default function InstallationGuidePage() {
           <div className="rounded-xl border border-black/[.08] dark:border-white/[.145] p-6">
             <h3 className="font-semibold mb-2">Monitor Performance</h3>
             <p className="text-black/70 dark:text-white/70">
-              Regularly check the EA's performance and adjust settings if market conditions change significantly.
+              Regularly check the EA&apos;s performance and adjust settings if market conditions change significantly.
             </p>
           </div>
         </div>

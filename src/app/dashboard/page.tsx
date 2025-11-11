@@ -2,19 +2,35 @@
 
 import { useAtom } from "jotai";
 import { authStateAtom } from "@/state/atoms";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
-export default function DashboardPage() {
+interface PurchasedEA {
+  id: string;
+  eaId: string;
+  eaName: string;
+  name: string;
+  orderId?: string;
+  purchaseDate: string;
+  version: string;
+  license: string;
+  thumbnail: string;
+  description: string;
+  downloadCount?: number;
+  lastDownloaded?: string | null;
+}
+
+function DashboardContent() {
   const [authState] = useAtom(authStateAtom);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
-  const [purchasedEAs, setPurchasedEAs] = useState<any[]>([]);
+  const [purchasedEAs, setPurchasedEAs] = useState<PurchasedEA[]>([]);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
 
-  const handleDownload = async (eaId: string, eaName: string) => {
+  const handleDownload = async (eaId: string) => {
     setDownloading(eaId);
     try {
       const response = await fetch(`/api/download?eaId=${eaId}`);
@@ -168,7 +184,7 @@ export default function DashboardPage() {
       <section className="mb-10">
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <a
+          <Link
             href="/marketplace"
             className="group rounded-xl border border-black/[.08] dark:border-white/[.145] p-5 hover:border-blue-500 dark:hover:border-blue-400 transition-all hover:shadow-lg"
           >
@@ -179,7 +195,7 @@ export default function DashboardPage() {
             <p className="text-xs text-black/60 dark:text-white/60">
               Discover new trading bots
             </p>
-          </a>
+          </Link>
 
           <button className="group text-left rounded-xl border border-black/[.08] dark:border-white/[.145] p-5 hover:border-green-500 dark:hover:border-green-400 transition-all hover:shadow-lg">
             <div className="text-2xl mb-2">📥</div>
@@ -191,7 +207,7 @@ export default function DashboardPage() {
             </p>
           </button>
 
-          <a
+          <Link
             href="/support"
             className="group rounded-xl border border-black/[.08] dark:border-white/[.145] p-5 hover:border-purple-500 dark:hover:border-purple-400 transition-all hover:shadow-lg"
           >
@@ -200,11 +216,11 @@ export default function DashboardPage() {
               Get Support
             </h3>
             <p className="text-xs text-black/60 dark:text-white/60">
-              We're here to help
+              We&apos;re here to help
             </p>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/installation-guide"
             className="group rounded-xl border border-black/[.08] dark:border-white/[.145] p-5 hover:border-orange-500 dark:hover:border-orange-400 transition-all hover:shadow-lg"
           >
@@ -215,7 +231,7 @@ export default function DashboardPage() {
             <p className="text-xs text-black/60 dark:text-white/60">
               Step-by-step tutorials
             </p>
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -235,12 +251,12 @@ export default function DashboardPage() {
             <p className="text-black/70 dark:text-white/70 mb-6">
               Start building your automated trading portfolio
             </p>
-            <a
+            <Link
               href="/marketplace"
               className="inline-flex items-center rounded-full bg-foreground text-background px-6 py-3 font-medium hover:opacity-90"
             >
               Browse Marketplace
-            </a>
+            </Link>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -272,7 +288,7 @@ export default function DashboardPage() {
                   
                   <div className="flex gap-2">
                     <button 
-                      onClick={() => handleDownload(ea.eaId, ea.eaName)}
+                      onClick={() => handleDownload(ea.eaId)}
                       disabled={downloading === ea.eaId}
                       className="flex-1 rounded-lg bg-foreground text-background px-4 py-2 text-sm font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
@@ -310,4 +326,14 @@ export default function DashboardPage() {
   );
 }
 
-
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
+  );
+}

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { sendConfirmationEmail } from '@/lib/email';
 import { verifyPesapalPayment } from '@/lib/pesapal';
-import { verifyMpesaPayment } from '@/lib/mpesa';
-import { getPayPalOrderDetails, verifyPayPalWebhook } from '@/lib/paypal';
+import { verifyPayPalWebhook } from '@/lib/paypal';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getEAByName } from '@/data/eas';
 
@@ -21,9 +20,6 @@ export async function GET(req: NextRequest) {
     const isBrowser = userAgent.includes('Mozilla') || userAgent.includes('Chrome') || userAgent.includes('Safari') || userAgent.includes('Firefox');
     
     // Check if this is a Pesapal IPN notification (try multiple formats)
-    const notificationType = searchParams.get('pesapal_notification_type') || 
-                             searchParams.get('NotificationType') || 
-                             searchParams.get('notificationType');
     const transactionTrackingId = searchParams.get('pesapal_transaction_tracking_id') || 
                                   searchParams.get('OrderTrackingId') || 
                                   searchParams.get('orderTrackingId') ||
@@ -72,10 +68,11 @@ export async function GET(req: NextRequest) {
             // For server-to-server IPN, verify with Pesapal
             try {
               verification = await verifyPesapalPayment(transactionTrackingId);
-            } catch (verifyError: any) {
+            } catch (verifyError) {
+              const error = verifyError as { message?: string };
               console.error('Pesapal verification error:', verifyError);
               // If verification fails but it's a browser redirect, still process (user completed payment)
-              verification = { success: isBrowser, error: verifyError?.message };
+              verification = { success: isBrowser, error: error?.message };
             }
           }
           
@@ -96,15 +93,17 @@ export async function GET(req: NextRequest) {
                   orderData!.botName,
                   merchantReference
                 );
-              } catch (eaError: any) {
-                console.error(`Failed to add EA to user account:`, eaError?.message || eaError);
+              } catch (eaError) {
+                const error = eaError as { message?: string };
+                console.error(`Failed to add EA to user account:`, error?.message || eaError);
               }
               
               // Send confirmation email
               try {
                 await sendConfirmationEmail(orderData!.email, orderData!.botName, merchantReference);
-              } catch (emailError: any) {
-                console.error(`Failed to send confirmation email:`, emailError?.message || emailError);
+              } catch (emailError) {
+                const error = emailError as { message?: string };
+                console.error(`Failed to send confirmation email:`, error?.message || emailError);
               }
             }
           } else {
@@ -119,7 +118,7 @@ export async function GET(req: NextRequest) {
             }
           }
         }
-      } catch (firestoreError: any) {
+      } catch (firestoreError) {
         // Firestore might not be available, but we still need to respond to Pesapal
         console.error('Firestore error processing Pesapal IPN:', firestoreError);
       }
@@ -206,23 +205,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const headers = Object.fromEntries(req.headers.entries());
     
-    // Determine payment gateway from headers or body
-    const userAgent = headers['user-agent'] || '';
-    const contentType = headers['content-type'] || '';
-    
     let orderId = '';
     let status = '';
     let transactionId = '';
-    let paymentMethod = '';
-    let amount = 0;
 
     // Handle Pesapal webhook (POST with JSON body)
     if (body.order_tracking_id || body.orderMerchantReference || body.order_tracking_id) {
       orderId = body.orderMerchantReference || body.order_merchant_reference || body.order_tracking_id;
       status = body.payment_status || body.status;
       transactionId = body.order_tracking_id || body.transaction_id || body.pesapal_transaction_tracking_id;
-      paymentMethod = 'pesapal';
-      amount = parseFloat(body.amount || '0');
       
       // Verify Pesapal payment
       if (transactionId) {
@@ -239,14 +230,9 @@ export async function POST(req: NextRequest) {
       const stkCallback = body.Body.stkCallback;
       orderId = stkCallback.MerchantRequestID;
       transactionId = stkCallback.CheckoutRequestID;
-      paymentMethod = 'mpesa';
       
       if (stkCallback.ResultCode === 0) {
         status = 'success';
-        const callbackMetadata = stkCallback.CallbackMetadata?.Item;
-        if (callbackMetadata) {
-          amount = parseFloat(callbackMetadata.find((item: any) => item.Name === 'Amount')?.Value || '0');
-        }
       } else {
         status = 'failed';
       }
@@ -262,13 +248,7 @@ export async function POST(req: NextRequest) {
       if (body.event_type === 'CHECKOUT.ORDER.APPROVED' || body.event_type === 'PAYMENT.CAPTURE.COMPLETED') {
         orderId = body.resource.custom_id || body.resource.id;
         transactionId = body.resource.id;
-        paymentMethod = 'paypal';
         status = 'success';
-        
-        const purchaseUnit = body.resource.purchase_units?.[0];
-        if (purchaseUnit?.amount) {
-          amount = parseFloat(purchaseUnit.amount.value || '0');
-        }
       }
     }
     // Generic webhook format (fallback)
@@ -276,8 +256,6 @@ export async function POST(req: NextRequest) {
       orderId = body.orderId;
       status = body.status;
       transactionId = body.transactionId;
-      amount = body.amount;
-      paymentMethod = body.paymentMethod;
     }
 
     if (!orderId) {
@@ -407,7 +385,7 @@ async function addEAToUserAccount(
     const existingEAs = userData.purchasedEAs || [];
     
     // Check if this exact order already exists
-    const orderExists = existingEAs.some((ea: any) => ea.orderId === orderId);
+    const orderExists = existingEAs.some((ea: { orderId?: string }) => ea.orderId === orderId);
     
     if (!orderExists) {
       await userRef.update({

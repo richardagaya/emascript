@@ -51,9 +51,10 @@ export async function GET(req: NextRequest) {
     try {
       const usersRef = adminDb.collection('users');
       userQuery = await usersRef.where('email', '==', userEmail).limit(1).get();
-    } catch (firestoreError: any) {
+    } catch (firestoreError) {
+      const error = firestoreError as { code?: number | string };
       // Handle Firestore connection errors
-      if (firestoreError?.code === 5 || firestoreError?.code === 'NOT_FOUND') {
+      if (error?.code === 5 || error?.code === 'NOT_FOUND') {
         console.warn('Firestore database not found or not initialized.');
         return NextResponse.json(
           { error: 'Database not available. Please contact support.' },
@@ -76,7 +77,7 @@ export async function GET(req: NextRequest) {
     const purchasedEAs = userData.purchasedEAs || [];
 
     // Find the EA in user's purchased list
-    const eaIndex = purchasedEAs.findIndex((ea: any) => ea.eaId === eaId);
+    const eaIndex = purchasedEAs.findIndex((ea: { eaId?: string }) => ea.eaId === eaId);
 
     if (eaIndex === -1) {
       return NextResponse.json(
@@ -110,7 +111,6 @@ export async function GET(req: NextRequest) {
     const directoryPath = `eas/${eaIdCapitalized}/${ea.version}`;
     
     let file = null;
-    let filePath = null;
     let fileName = null;
 
     // First try the expected filename: Akavanta.mq5
@@ -120,7 +120,6 @@ export async function GET(req: NextRequest) {
     
     if (fileExists) {
       file = expectedFile;
-      filePath = expectedPath;
       fileName = `${eaIdCapitalized}.mq5`;
     } else {
       // If not found, list all files in the directory to find the actual file
@@ -142,7 +141,6 @@ export async function GET(req: NextRequest) {
         
         if (eaFile) {
           file = bucket.file(eaFile.name);
-          filePath = eaFile.name;
           const foundFileName = eaFile.name.split('/').pop() || `${eaIdCapitalized}.mq5`;
           fileName = foundFileName;
           
@@ -157,7 +155,7 @@ export async function GET(req: NextRequest) {
             { status: 404 }
           );
         }
-      } catch (listError: any) {
+      } catch (listError) {
         console.error(`Error listing directory ${directoryPath}:`, listError);
         return NextResponse.json(
           { error: 'Error accessing storage. Please contact support.' },

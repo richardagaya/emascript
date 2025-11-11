@@ -60,9 +60,10 @@ export async function POST(req: NextRequest) {
         { success: true, message: 'Email saved successfully' },
         { status: 200 }
       );
-    } catch (firestoreError: any) {
+    } catch (firestoreError) {
+      const error = firestoreError as { code?: number | string };
       // Handle Firestore errors gracefully
-      if (firestoreError?.code === 5 || firestoreError?.code === 'NOT_FOUND') {
+      if (error?.code === 5 || error?.code === 'NOT_FOUND') {
         console.warn('⚠️  Firestore database not found or not initialized.');
         return NextResponse.json(
           { error: 'Database not available. Please try again later.' },
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
       }
       throw firestoreError;
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error saving newsletter signup:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

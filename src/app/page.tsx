@@ -1,4 +1,5 @@
 import AccordionFAQ from "@/components/AccordionFAQ";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -15,12 +16,12 @@ export default function Home() {
               controls, and easy onboarding. Start automating your trading today.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-              <a
+              <Link
                 href="/marketplace"
                 className="rounded-full bg-foreground text-background px-5 py-3 text-sm font-medium hover:opacity-90 text-center"
               >
                 View marketplace
-              </a>
+              </Link>
             </div>
             <div className="mt-6 text-xs text-black/60 dark:text-white/60">
               Works with MT4/MT5.

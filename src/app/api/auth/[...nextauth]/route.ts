@@ -4,14 +4,13 @@ import { z } from "zod";
 
 // Firebase REST API endpoints and expected env vars
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY as string | undefined;
-const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID as string | undefined;
 
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
 });
 
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   providers: [
     Credentials({
       name: "Email and Password",
@@ -57,11 +56,10 @@ export const authOptions: NextAuthOptions = {
             id: data.localId,
             email: data.email,
             name: data.displayName ?? null,
-            // Expose tokens for JWT callback via user object
             firebaseIdToken: data.idToken,
             firebaseRefreshToken: data.refreshToken,
             firebaseTokenExpiresInSeconds: Number(data.expiresIn),
-          } as unknown as any;
+          };
         } catch (e) {
           console.error("Firebase signInWithPassword failed", e);
           return null;
@@ -92,8 +90,18 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       // surface uid and idToken on session for client use
-      (session.user as any).uid = (token as any).uid;
-      (session as any).firebaseIdToken = (token as any).firebaseIdToken;
+      interface ExtendedUser {
+        uid?: string;
+      }
+      interface ExtendedSession {
+        firebaseIdToken?: string;
+      }
+      interface ExtendedToken {
+        uid?: string;
+        firebaseIdToken?: string;
+      }
+      (session.user as ExtendedUser).uid = (token as ExtendedToken).uid;
+      (session as ExtendedSession).firebaseIdToken = (token as ExtendedToken).firebaseIdToken;
       return session;
     },
   },

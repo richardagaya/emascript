@@ -1,11 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     console.log('🔍 Testing Firestore connection...\n');
     
-    const results: any = {
+    const results: {
+      timestamp: string;
+      tests: Array<Record<string, unknown>>;
+      success: boolean;
+      error: string | null;
+    } = {
       timestamp: new Date().toISOString(),
       tests: [],
       success: false,
@@ -23,23 +28,24 @@ export async function GET(req: NextRequest) {
         collections: collections.map(col => col.id),
       });
       console.log(`✅ Success! Found ${collections.length} collections`);
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as { code?: number | string; message?: string };
       results.tests.push({
         name: 'List Collections',
         success: false,
         error: {
-          code: err.code,
-          message: err.message,
+          code: error.code,
+          message: error.message,
         },
       });
-      console.error('❌ Failed to list collections:', err.code, err.message);
+      console.error('❌ Failed to list collections:', error.code, error.message);
       
-      if (err.code === 7 || err.code === 'PERMISSION_DENIED') {
+      if (error.code === 7 || error.code === 'PERMISSION_DENIED') {
         results.error = 'PERMISSION_DENIED: Service account needs "Editor" or "Firebase Admin SDK Administrator Service Agent" role';
-      } else if (err.code === 5 || err.code === 'NOT_FOUND') {
+      } else if (error.code === 5 || error.code === 'NOT_FOUND') {
         results.error = 'NOT_FOUND: Database might not exist or is in a different region';
       } else {
-        results.error = `Error ${err.code}: ${err.message}`;
+        results.error = `Error ${error.code}: ${error.message}`;
       }
       
       return NextResponse.json(results, { status: 500 });
@@ -59,17 +65,18 @@ export async function GET(req: NextRequest) {
         message: 'Successfully wrote test document',
       });
       console.log('✅ Successfully wrote test document');
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as { code?: number | string; message?: string };
       results.tests.push({
         name: 'Write Document',
         success: false,
         error: {
-          code: err.code,
-          message: err.message,
+          code: error.code,
+          message: error.message,
         },
       });
-      console.error('❌ Failed to write document:', err.code, err.message);
-      results.error = `Write failed: ${err.code} - ${err.message}`;
+      console.error('❌ Failed to write document:', error.code, error.message);
+      results.error = `Write failed: ${error.code} - ${error.message}`;
       return NextResponse.json(results, { status: 500 });
     }
     
@@ -93,17 +100,18 @@ export async function GET(req: NextRequest) {
           message: 'Document does not exist after write',
         });
       }
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as { code?: number | string; message?: string };
       results.tests.push({
         name: 'Read Document',
         success: false,
         error: {
-          code: err.code,
-          message: err.message,
+          code: error.code,
+          message: error.message,
         },
       });
-      console.error('❌ Failed to read document:', err.code, err.message);
-      results.error = `Read failed: ${err.code} - ${err.message}`;
+      console.error('❌ Failed to read document:', error.code, error.message);
+      results.error = `Read failed: ${error.code} - ${error.message}`;
       return NextResponse.json(results, { status: 500 });
     }
     
@@ -118,7 +126,7 @@ export async function GET(req: NextRequest) {
         message: 'Test document deleted',
       });
       console.log('✅ Test document deleted');
-    } catch (err: any) {
+    } catch {
       results.tests.push({
         name: 'Cleanup',
         success: false,
@@ -131,12 +139,13 @@ export async function GET(req: NextRequest) {
     
     return NextResponse.json(results, { status: 200 });
     
-  } catch (error: any) {
+  } catch (error) {
+    const err = error as { message?: string; code?: number | string };
     console.error('\n❌ Firestore connection test failed:', error);
     return NextResponse.json({
       success: false,
-      error: error.message || 'Unknown error',
-      code: error.code,
+      error: err.message || 'Unknown error',
+      code: err.code,
     }, { status: 500 });
   }
 }

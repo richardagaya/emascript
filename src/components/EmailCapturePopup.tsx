@@ -53,7 +53,7 @@ export default function EmailCapturePopup() {
       } else {
         setError(data.error || "Failed to save email. Please try again.");
       }
-    } catch (err) {
+    } catch {
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
@@ -93,7 +93,7 @@ export default function EmailCapturePopup() {
             </div>
             <h3 className="text-xl font-semibold mb-2">Thank you!</h3>
             <p className="text-black/60 dark:text-white/60">
-              We'll keep you updated with the latest news and updates.
+              We&apos;ll keep you updated with the latest news and updates.
             </p>
           </div>
         ) : (

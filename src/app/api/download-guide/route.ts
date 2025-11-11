@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { adminAuth, adminStorage } from '@/lib/firebaseAdmin';
 import { cookies } from 'next/headers';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // Get the auth token from cookies
     const cookieStore = await cookies();
@@ -16,9 +16,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Verify the Firebase token
-    let decodedToken;
     try {
-      decodedToken = await adminAuth.verifyIdToken(token);
+      await adminAuth.verifyIdToken(token);
     } catch (error) {
       console.error('Token verification error:', error);
       return NextResponse.json(

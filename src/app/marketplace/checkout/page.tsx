@@ -2,13 +2,13 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAtom } from 'jotai';
 import { authStateAtom } from '@/state/atoms';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import './checkout.css';
 import { getEAByName } from '@/data/eas';
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const botName = searchParams.get('bot');
@@ -291,5 +291,17 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
+      </div>
+    }>
+      <CheckoutContent />
+    </Suspense>
   );
 }

@@ -136,12 +136,12 @@ export async function initializePayPalPayment(
       hasResult: !!response.result,
       orderId: response.result?.id,
       status: response.result?.status,
-      links: response.result?.links?.map((l: any) => ({ rel: l.rel, href: l.href })),
+      links: response.result?.links?.map((l: { rel?: string; href?: string }) => ({ rel: l.rel, href: l.href })),
     });
     
     if (response.result?.id) {
       // Find the approval URL from the links array
-      const approvalUrl = response.result.links?.find((link: any) => link.rel === 'approve')?.href;
+      const approvalUrl = response.result.links?.find((link: { rel?: string; href?: string }) => link.rel === 'approve')?.href;
       
       if (!approvalUrl) {
         return {
@@ -162,31 +162,39 @@ export async function initializePayPalPayment(
         error: 'Failed to create PayPal order - invalid response',
       };
     }
-  } catch (error: any) {
+  } catch (error) {
+    const err = error as {
+      message?: string;
+      response?: {
+        data?: { message?: string; details?: Array<{ description?: string; issue?: string }>; error?: string; error_description?: string };
+        status?: number;
+        statusText?: string;
+      };
+    };
     console.error('Error initializing PayPal payment:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
+      message: err.message,
+      response: err.response?.data,
+      status: err.response?.status,
+      statusText: err.response?.statusText,
       fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
     });
     
     // Extract detailed error message
     let errorMessage = 'Failed to initialize PayPal payment';
     
-    if (error.response?.data) {
+    if (err.response?.data) {
       // PayPal API error response
-      if (error.response.data.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response.data.details && error.response.data.details.length > 0) {
-        errorMessage = error.response.data.details[0].description || error.response.data.details[0].issue || errorMessage;
-      } else if (error.response.data.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.response.data.error_description) {
-        errorMessage = error.response.data.error_description;
+      if (err.response.data.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response.data.details && err.response.data.details.length > 0) {
+        errorMessage = err.response.data.details[0].description || err.response.data.details[0].issue || errorMessage;
+      } else if (err.response.data.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response.data.error_description) {
+        errorMessage = err.response.data.error_description;
       }
-    } else if (error.message) {
-      errorMessage = error.message;
+    } else if (err.message) {
+      errorMessage = err.message;
     }
     
     return {
@@ -221,10 +229,11 @@ export async function capturePayPalPayment(
       transactionId: captureId || orderId,
       orderId: orderId,
     };
-  } catch (error: any) {
+  } catch (error) {
+    const err = error as { message?: string; response?: { data?: { message?: string } } };
     console.error('Error capturing PayPal payment:', error);
-    const errorMessage = error.message || 
-                        error.response?.data?.message ||
+    const errorMessage = err.message || 
+                        err.response?.data?.message ||
                         'Failed to capture PayPal payment';
     return {
       success: false,
@@ -254,10 +263,11 @@ export async function getPayPalOrderDetails(
       transactionId: orderId,
       orderId: orderId,
     };
-  } catch (error: any) {
+  } catch (error) {
+    const err = error as { message?: string; response?: { data?: { message?: string } } };
     console.error('Error getting PayPal order details:', error);
-    const errorMessage = error.message || 
-                        error.response?.data?.message ||
+    const errorMessage = err.message || 
+                        err.response?.data?.message ||
                         'Failed to get PayPal order details';
     return {
       success: false,
@@ -276,8 +286,8 @@ export async function getPayPalOrderDetails(
  * This is a placeholder - implement full signature verification for production
  */
 export async function verifyPayPalWebhook(
-  headers: any, 
-  body: string
+  _headers: Record<string, string>, 
+  _body: string
 ): Promise<boolean> {
   try {
     // TODO: Implement full webhook signature verification

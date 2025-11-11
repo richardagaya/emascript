@@ -73,8 +73,9 @@ export async function POST(req: NextRequest) {
       await adminDb.collection('orders').doc(orderId).set(orderData);
       firestoreSaved = true;
       console.log('Order saved to Firestore:', orderId);
-    } catch (firestoreError: any) {
-      if (firestoreError?.code === 5 || firestoreError?.code === 'NOT_FOUND') {
+    } catch (firestoreError) {
+      const error = firestoreError as { code?: number | string };
+      if (error?.code === 5 || error?.code === 'NOT_FOUND') {
         console.warn('⚠️  Firestore not available. Order will be saved after payment. Continuing with payment initialization...');
       } else {
         console.error('Firestore save error (non-critical):', firestoreError);
@@ -157,11 +158,12 @@ export async function POST(req: NextRequest) {
         hasTransactionId: !!paymentResult.transactionId,
         error: paymentResult.error,
       });
-    } catch (paymentError: any) {
+    } catch (paymentError) {
+      const error = paymentError as { message?: string };
       console.error(`Error initializing ${paymentMethod} payment:`, paymentError);
       return NextResponse.json({
         success: false,
-        error: paymentError.message || `Failed to initialize ${paymentMethod} payment`,
+        error: error.message || `Failed to initialize ${paymentMethod} payment`,
         orderId,
       }, { status: 500 });
     }
@@ -177,7 +179,7 @@ export async function POST(req: NextRequest) {
     // Update order with transaction ID and payment URL if available (non-blocking)
     if (firestoreSaved) {
       try {
-        const updateData: any = {
+        const updateData: Record<string, string | undefined> = {
           transactionId: paymentResult.transactionId,
           updatedAt: new Date().toISOString(),
         };

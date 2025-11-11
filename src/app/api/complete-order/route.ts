@@ -61,7 +61,7 @@ async function addEAToUserAccount(
     const existingEAs = userData.purchasedEAs || [];
     
     // Check if this exact order already exists
-    const orderExists = existingEAs.some((ea: any) => ea.orderId === orderId);
+    const orderExists = existingEAs.some((ea: { orderId?: string }) => ea.orderId === orderId);
     
     if (!orderExists) {
       await userRef.update({
@@ -103,15 +103,16 @@ export async function POST(req: NextRequest) {
     const orderRef = adminDb.collection('orders').doc(orderId);
     try {
       orderDoc = await orderRef.get();
-    } catch (firestoreError: any) {
+    } catch (firestoreError) {
+      const error = firestoreError as { code?: number | string; message?: string };
       console.error('❌ Firestore error accessing order:', {
-        code: firestoreError?.code,
-        message: firestoreError?.message,
+        code: error?.code,
+        message: error?.message,
         orderId,
       });
       
       // Check if it's a database not found error
-      if (firestoreError?.code === 5 || firestoreError?.code === 'NOT_FOUND') {
+      if (error?.code === 5 || error?.code === 'NOT_FOUND') {
         return NextResponse.json(
           { 
             error: 'Firestore database not found or not initialized',
@@ -155,9 +156,10 @@ export async function POST(req: NextRequest) {
         paidAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
-    } catch (updateError: any) {
+    } catch (updateError) {
+      const error = updateError as { message?: string };
       console.error('❌ Error updating order:', updateError);
-      throw new Error(`Failed to update order: ${updateError?.message || updateError}`);
+      throw new Error(`Failed to update order: ${error?.message || updateError}`);
     }
 
     // Add EA to user's account
@@ -184,12 +186,13 @@ export async function POST(req: NextRequest) {
       botName: orderData!.botName,
     }, { status: 200 });
 
-  } catch (error: any) {
+  } catch (error) {
+    const err = error as { message?: string };
     console.error('Error completing order:', error);
     return NextResponse.json(
       { 
         error: 'Internal server error',
-        details: error.message 
+        details: err.message 
       },
       { status: 500 }
     );

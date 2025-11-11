@@ -5,6 +5,8 @@ import { onAuthStateChanged, signOut as fbSignOut } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
 import { useAtom } from "jotai";
 import { authStateAtom, mobileMenuOpenAtom } from "@/state/atoms";
+import Link from "next/link";
+import Image from "next/image";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useAtom(mobileMenuOpenAtom);
@@ -65,9 +67,9 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-black/[.08] dark:border-white/[.145] bg-white/80 dark:bg-black/50 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-sm">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
-        <a href="/" className="font-semibold text-base sm:text-lg tracking-tight">
+        <Link href="/" className="font-semibold text-base sm:text-lg tracking-tight">
           Akavanta
-        </a>
+        </Link>
         <button
           aria-label="Toggle menu"
           aria-expanded={isOpen}
@@ -85,16 +87,18 @@ export default function Navbar() {
           )}
         </button>
         <nav className="hidden sm:flex items-center gap-6 text-sm">
-          <a href="/marketplace" className="hover:underline">Marketplace</a>
+          <Link href="/marketplace" className="hover:underline">Marketplace</Link>
           <a href="#faq" className="hover:underline">FAQ</a>
           {authState.isAuthed ? (
             <>
-              <a href="/dashboard" className="hover:underline">Dashboard</a>
+              <Link href="/dashboard" className="hover:underline">Dashboard</Link>
               <div className="flex items-center gap-2">
                 {authState.photoURL && !imageError ? (
-                  <img 
+                  <Image 
                     src={authState.photoURL} 
                     alt="avatar" 
+                    width={24}
+                    height={24}
                     className="h-6 w-6 rounded-full object-cover"
                     onError={() => setImageError(true)}
                     referrerPolicy="no-referrer"
@@ -136,16 +140,18 @@ export default function Navbar() {
         aria-hidden={!isOpen}
       >
         <nav className="mx-auto max-w-6xl px-4 sm:px-6 py-3 flex flex-col gap-3 text-sm">
-          <a href="/marketplace" className="hover:underline" onClick={closeMenu}>Marketplace</a>
+          <Link href="/marketplace" className="hover:underline" onClick={closeMenu}>Marketplace</Link>
           <a href="#faq" className="hover:underline" onClick={closeMenu}>FAQ</a>
           {authState.isAuthed ? (
             <>
-              <a href="/dashboard" className="hover:underline" onClick={closeMenu}>Dashboard</a>
+              <Link href="/dashboard" className="hover:underline" onClick={closeMenu}>Dashboard</Link>
               <div className="flex items-center gap-2">
                 {authState.photoURL && !imageError ? (
-                  <img 
+                  <Image 
                     src={authState.photoURL} 
                     alt="avatar" 
+                    width={24}
+                    height={24}
                     className="h-6 w-6 rounded-full object-cover"
                     onError={() => setImageError(true)}
                     referrerPolicy="no-referrer"
