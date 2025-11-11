@@ -26,7 +26,7 @@ jobs:
       - name: Create Firebase App Hosting rollout
         run: >
           npx --yes firebase-tools@latest
-          apphosting:rollouts:create emascript
+          apphosting:rollouts:create emascript main
           --project fxpro-2dc0c
           --non-interactive
           --token "${{ secrets.FIREBASE_TOKEN }}"
