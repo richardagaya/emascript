@@ -1,24 +1,22 @@
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getStorage } from 'firebase-admin/storage';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
+import { getAuth, Auth } from 'firebase-admin/auth';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getStorage, Storage } from 'firebase-admin/storage';
 
-// Initialize Firebase Admin SDK
-let adminApp;
-if (!getApps().length) {
+// Lazy initialization to avoid errors during build time
+function getAdminApp(): App {
+  if (getApps().length) {
+    return getApps()[0];
+  }
+
+  // Check if we're in build time (no env vars available)
+  if (!process.env.FIREBASE_ADMIN_PROJECT_ID) {
+    console.warn('Firebase Admin credentials not available - skipping initialization');
+    throw new Error('Firebase Admin not configured');
+  }
+
   try {
-    // Validate required environment variables
-    if (!process.env.FIREBASE_ADMIN_PROJECT_ID) {
-      console.error('FIREBASE_ADMIN_PROJECT_ID is not set');
-    }
-    if (!process.env.FIREBASE_ADMIN_CLIENT_EMAIL) {
-      console.error('FIREBASE_ADMIN_CLIENT_EMAIL is not set');
-    }
-    if (!process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
-      console.error('FIREBASE_ADMIN_PRIVATE_KEY is not set');
-    }
-
-    adminApp = initializeApp({
+    return initializeApp({
       credential: cert({
         projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
         clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
@@ -28,23 +26,40 @@ if (!getApps().length) {
     });
   } catch (error) {
     console.error('Firebase admin initialization error:', error);
-    throw error; // Re-throw to prevent undefined adminApp usage
+    throw error;
   }
-} else {
-  adminApp = getApps()[0];
 }
 
-if (!adminApp) {
-  throw new Error('Firebase Admin app is not initialized');
-}
+// Lazy getters for Firebase services
+let _adminAuth: Auth | null = null;
+let _adminDb: Firestore | null = null;
+let _adminStorage: Storage | null = null;
 
-export const adminAuth = getAuth(adminApp);
+export const adminAuth = new Proxy({} as Auth, {
+  get(_target, prop) {
+    if (!_adminAuth) {
+      _adminAuth = getAuth(getAdminApp());
+    }
+    return _adminAuth[prop as keyof Auth];
+  }
+});
 
-// Get Firestore instance - support named databases (default is "(default)")
-// If you have a named database, set FIREBASE_DATABASE_ID in .env.local
-const databaseId = process.env.FIREBASE_DATABASE_ID || '(default)';
-export const adminDb = getFirestore(adminApp, databaseId);
+export const adminDb = new Proxy({} as Firestore, {
+  get(_target, prop) {
+    if (!_adminDb) {
+      const databaseId = process.env.FIREBASE_DATABASE_ID || '(default)';
+      _adminDb = getFirestore(getAdminApp(), databaseId);
+    }
+    return _adminDb[prop as keyof Firestore];
+  }
+});
 
-
-export const adminStorage = getStorage(adminApp);
+export const adminStorage = new Proxy({} as Storage, {
+  get(_target, prop) {
+    if (!_adminStorage) {
+      _adminStorage = getStorage(getAdminApp());
+    }
+    return _adminStorage[prop as keyof Storage];
+  }
+});
 
