@@ -57,6 +57,8 @@ jobs:
           gcloud services enable cloudbuild.googleapis.com --project=fxpro-2dc0c
           gcloud services enable artifactregistry.googleapis.com --project=fxpro-2dc0c
           gcloud services enable run.googleapis.com --project=fxpro-2dc0c
+          gcloud services enable cloudbilling.googleapis.com --project=fxpro-2dc0c
+          gcloud services enable firebaseextensions.googleapis.com --project=fxpro-2dc0c
         continue-on-error: true
 
       - name: Deploy to Firebase
