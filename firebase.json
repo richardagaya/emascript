@@ -1,20 +1,13 @@
 {
   "hosting": {
-    "public": "public",
+    "public": "out",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
-      {
-        "source": "**",
-        "run": {
-          "serviceId": "emascript",
-          "region": "us-central1"
-        }
-      }
-    ]
+    "cleanUrls": true,
+    "trailingSlash": false
   }
 }
 
