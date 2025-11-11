@@ -209,7 +209,6 @@ export async function POST(req: NextRequest) {
     let status = '';
     let transactionId = '';
 
-    // Handle Pesapal webhook (POST with JSON body)
     if (body.order_tracking_id || body.orderMerchantReference || body.order_tracking_id) {
       orderId = body.orderMerchantReference || body.order_merchant_reference || body.order_tracking_id;
       status = body.payment_status || body.status;
