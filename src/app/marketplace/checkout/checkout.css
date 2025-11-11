@@ -17,7 +17,6 @@
   transition: all 0.2s ease !important;
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
 }
-
 .premium-phone-input:hover {
   border-color: rgb(107 114 128) !important;
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1) !important;
