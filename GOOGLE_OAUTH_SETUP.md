@@ -6,6 +6,31 @@ This guide will help you configure Google OAuth to work on your production domai
 
 If Google sign-in fails on production, it's usually due to missing OAuth configuration in Google Cloud Console, not just Firebase Console.
 
+### Popup Appears and Disappears Immediately
+
+If the Google sign-in popup appears and then immediately disappears, this is almost always caused by:
+
+1. **OAuth Redirect URI Mismatch** (Most Common)
+   - The redirect URI in Google Cloud Console doesn't match what Firebase is trying to use
+   - Check the browser console for `redirect_uri_mismatch` errors
+   - Solution: Add the correct redirect URIs (see Step 2 below)
+
+2. **Unauthorized Domain**
+   - Your domain is not authorized in Firebase or Google Cloud Console
+   - Check the browser console for `auth/unauthorized-domain` errors
+   - Solution: Add your domain to both Firebase Console and Google Cloud Console
+
+3. **Popup Blocked by Browser**
+   - Modern browsers may block popups if they're not triggered by direct user interaction
+   - The code now automatically falls back to redirect method if popup fails
+   - Solution: Allow popups for your domain or use the redirect method
+
+**Quick Fix Steps:**
+1. Open browser console (F12) and look for error messages
+2. Check if you see `redirect_uri_mismatch` - this means you need to add redirect URIs in Google Cloud Console
+3. Check if you see `auth/unauthorized-domain` - this means you need to add your domain
+4. The improved code will automatically try redirect method if popup fails
+
 ## Required Configuration Steps
 
 ### 1. Firebase Console - Authorized Domains ✅ (You've done this)

@@ -24,21 +24,45 @@ function LoginContent() {
         const result = await getRedirectResult(auth);
         if (result?.user) {
           setLoading(true);
-          const idToken = await result.user.getIdToken();
-          await fetch("/api/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
-          });
-          router.push(callbackUrl);
+          try {
+            const idToken = await result.user.getIdToken();
+            const sessionResponse = await fetch("/api/session", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ idToken }),
+            });
+            
+            if (!sessionResponse.ok) {
+              throw new Error('Failed to create session');
+            }
+            
+            router.push(callbackUrl);
+          } catch (sessionError) {
+            console.error('Session creation error:', sessionError);
+            setError('Failed to create session. Please try again.');
+            setLoading(false);
+          }
         }
       } catch (err) {
         const error = err as { code?: string; message?: string };
         console.error('Redirect sign-in error:', error);
-        if (error?.code !== 'auth/popup-closed-by-user' && error?.code !== 'auth/cancelled-popup-request') {
-          setError("Google sign-in failed. Please try again.");
+        
+        // Only show error for non-user-cancellation errors
+        if (error?.code !== 'auth/popup-closed-by-user' && 
+            error?.code !== 'auth/cancelled-popup-request' &&
+            error?.code !== 'auth/user-cancelled') {
+          let errorMessage = 'Google sign-in failed. ';
+          
+          if (error?.code === 'auth/unauthorized-domain') {
+            errorMessage += 'Domain not authorized. Please check Firebase Console settings.';
+          } else if (error?.code === 'auth/operation-not-allowed') {
+            errorMessage += 'Google sign-in is not enabled. Please enable it in Firebase Console.';
+          } else if (error?.message?.includes('redirect_uri_mismatch')) {
+            errorMessage += 'OAuth configuration error. Please check Google Cloud Console.';
+          }
+          
+          setError(errorMessage || 'Please try again.');
         }
-      } finally {
         setLoading(false);
       }
     };
@@ -86,69 +110,98 @@ function LoginContent() {
     setError(null);
     setLoading(true);
     
-    const auth = getFirebaseAuth();
-    const provider = new GoogleAuthProvider();
-    provider.addScope('email');
-    provider.addScope('profile');
-    
-    // In production, use redirect by default for better reliability
-    // Popups are often blocked due to browser security policies
-    const isProduction = process.env.NODE_ENV === 'production' || 
-                         window.location.hostname !== 'localhost';
-    
-    if (isProduction) {
-      // Use redirect method in production (more reliable)
-      try {
-        await signInWithRedirect(auth, provider);
-        // Don't set loading to false - we're redirecting
-        return;
-      } catch (redirectError) {
-        console.error('Redirect sign-in error:', redirectError);
-        setError('Sign-in failed. Please try again.');
-        setLoading(false);
-        return;
-      }
-    }
-    
-    // Try popup in development (better UX)
     try {
-      const cred = await signInWithPopup(auth, provider);
-      const idToken = await cred.user.getIdToken();
-      await fetch("/api/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
+      const auth = getFirebaseAuth();
+      const provider = new GoogleAuthProvider();
+      
+      // Set custom parameters to ensure proper OAuth flow
+      provider.setCustomParameters({
+        prompt: 'select_account',
       });
-      router.push(callbackUrl);
+      
+      // Always try popup first for better UX
+      // If it fails, fallback to redirect
+      try {
+        const cred = await signInWithPopup(auth, provider);
+        const idToken = await cred.user.getIdToken();
+        
+        const sessionResponse = await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken }),
+        });
+        
+        if (!sessionResponse.ok) {
+          throw new Error('Failed to create session');
+        }
+        
+        router.push(callbackUrl);
+        setLoading(false);
+      } catch (popupError: unknown) {
+        const error = popupError as { code?: string; message?: string };
+        console.error('Popup sign-in error:', error);
+        
+        // Check for specific error codes that indicate popup issues
+        const popupErrorCodes = [
+          'auth/popup-blocked',
+          'auth/popup-closed-by-user',
+          'auth/cancelled-popup-request',
+          'auth/unauthorized-domain',
+          'auth/operation-not-allowed',
+        ];
+        
+        const isPopupError = popupErrorCodes.includes(error?.code || '') ||
+          error?.message?.toLowerCase().includes('popup') ||
+          error?.message?.toLowerCase().includes('redirect_uri_mismatch') ||
+          error?.message?.toLowerCase().includes('unauthorized');
+        
+        if (isPopupError && error?.code !== 'auth/popup-closed-by-user') {
+          // Fallback to redirect method
+          console.log('Falling back to redirect method...');
+          try {
+            await signInWithRedirect(auth, provider);
+            // Don't set loading to false - we're redirecting
+            return;
+          } catch (redirectError) {
+            console.error('Redirect sign-in error:', redirectError);
+            const redirectErr = redirectError as { code?: string; message?: string };
+            
+            // Provide specific error messages
+            if (redirectErr?.code === 'auth/unauthorized-domain') {
+              setError('Domain not authorized. Please check Firebase and Google Cloud Console settings.');
+            } else if (redirectErr?.message?.includes('redirect_uri_mismatch')) {
+              setError('OAuth configuration error. Please verify redirect URIs in Google Cloud Console.');
+            } else {
+              setError('Sign-in failed. Please try again or check your browser console for details.');
+            }
+            setLoading(false);
+          }
+        } else if (error?.code === 'auth/popup-closed-by-user') {
+          // User closed the popup intentionally
+          setError(null); // Don't show error for user cancellation
+          setLoading(false);
+        } else {
+          // Other errors
+          let errorMessage = 'Google sign-in failed. ';
+          
+          if (error?.code === 'auth/unauthorized-domain') {
+            errorMessage += 'Domain not authorized. Please check Firebase Console settings.';
+          } else if (error?.code === 'auth/operation-not-allowed') {
+            errorMessage += 'Google sign-in is not enabled. Please enable it in Firebase Console.';
+          } else if (error?.message?.includes('redirect_uri_mismatch')) {
+            errorMessage += 'OAuth configuration error. Please check Google Cloud Console.';
+          } else {
+            errorMessage += 'Please try again or use redirect method.';
+          }
+          
+          setError(errorMessage);
+          setLoading(false);
+        }
+      }
     } catch (err: unknown) {
       const error = err as { code?: string; message?: string };
-      console.error('Google sign-in error:', error);
-      
-      // Check for popup blocking errors (including the specific error message)
-      const isPopupBlocked = 
-        error?.code === 'auth/popup-blocked' ||
-        error?.code === 'auth/popup-closed-by-user' ||
-        error?.code === 'auth/cancelled-popup-request' ||
-        error?.message?.toLowerCase().includes('popup') ||
-        error?.message?.toLowerCase().includes('user activation') ||
-        error?.message?.toLowerCase().includes('multiple popups') ||
-        error?.message?.toLowerCase().includes('blocked');
-      
-      if (isPopupBlocked) {
-        try {
-          // Fallback to redirect method
-          await signInWithRedirect(auth, provider);
-          // Don't set loading to false - we're redirecting
-          return;
-        } catch (redirectError) {
-          console.error('Redirect sign-in error:', redirectError);
-          setError('Sign-in failed. Please try again or allow popups for this site.');
-        }
-      } else if (error?.code === 'auth/popup-closed-by-user') {
-        setError('Sign-in was cancelled. Please try again.');
-      } else {
-        setError("Google sign-in failed. Please try again.");
-      }
+      console.error('Unexpected Google sign-in error:', error);
+      setError('An unexpected error occurred. Please try again.');
       setLoading(false);
     }
   }
