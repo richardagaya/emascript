@@ -107,7 +107,7 @@ function LoginContent() {
         body: JSON.stringify({ idToken }),
       });
       router.push(callbackUrl);
-    } catch (err: any) {
+    } catch (err: unknown) {
       const error = err as { code?: string; message?: string };
       console.error('Google sign-in error:', error);
       

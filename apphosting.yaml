@@ -18,9 +18,15 @@ env:
     secret: PESAPAL_CONSUMER_KEY
   - variable: PESAPAL_CONSUMER_SECRET
     secret: PESAPAL_CONSUMER_SECRET
-  # Optional: Uncomment if you need to override defaults
-  # - variable: PESAPAL_BASE_URL
-  #   secret: PESAPAL_BASE_URL
-  # - variable: NEXTAUTH_URL
-  #   secret: NEXTAUTH_URL
+  - variable: PESAPAL_BASE_URL
+    secret: PESAPAL_BASE_URL
+  - variable: PESAPAL_CALLBACK_URL
+    secret: PESAPAL_CALLBACK_URL
+  - variable: PESAPAL_IPN_URL
+    secret: PESAPAL_IPN_URL
+  - variable: PESAPAL_IPN_ID
+    secret: PESAPAL_IPN_ID
+  # App URL Configuration (used for constructing callback URLs)
+  - variable: NEXT_PUBLIC_APP_URL
+    secret: NEXT_PUBLIC_APP_URL
 
