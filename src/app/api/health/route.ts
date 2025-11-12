@@ -8,7 +8,7 @@ export async function GET() {
       { 
         status: "ok", 
         timestamp: new Date().toISOString(),
-        version: "1.0.1"
+        version: "1.0.2"
       },
       { status: 200 }
     );
