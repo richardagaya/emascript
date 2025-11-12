@@ -141,35 +141,92 @@ function LoginContent() {
         prompt: 'select_account',
       });
       
-      // Use redirect method as primary since it's more reliable
-      // Popup method can be blocked by browsers or API key restrictions
-      // Redirect method works consistently and Identity Toolkit API shows 0% errors
+      // Always try popup first for better UX
+      // If it fails, fallback to redirect
       try {
-        await signInWithRedirect(auth, provider);
-        // Don't set loading to false - we're redirecting
-        googleSignInInProgress.current = false;
-        return;
-      } catch (redirectError: unknown) {
-        const error = redirectError as { code?: string; message?: string };
-        console.error('Redirect sign-in error:', error);
+        // Open popup synchronously within the user gesture handler
+        const popupPromise = signInWithPopup(auth, provider);
+        const cred = await popupPromise;
+        const idToken = await cred.user.getIdToken();
         
-        // Provide specific error messages
-        if (error?.code === 'auth/unauthorized-domain') {
-          setError('Domain not authorized. Please check Firebase Authentication settings and add your domain to authorized domains.');
-        } else if (error?.message?.includes('redirect_uri_mismatch')) {
-          setError('OAuth configuration error. Please verify redirect URIs in Google Cloud Console match your domain.');
-        } else if (error?.code === 'auth/api-key-not-valid') {
-          setError(
-            'Firebase API key is invalid. Please verify your NEXT_PUBLIC_FIREBASE_API_KEY environment variable. ' +
-            'Also check Google Cloud Console → APIs & Services → Credentials to ensure API key restrictions allow Identity Toolkit API.'
-          );
-        } else if (error?.code === 'auth/operation-not-allowed') {
-          setError('Google sign-in is not enabled. Please enable it in Firebase Console → Authentication → Sign-in method.');
-        } else {
-          setError('Sign-in failed. Please check your browser console for details and verify your Firebase configuration.');
+        const sessionResponse = await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken }),
+        });
+        
+        if (!sessionResponse.ok) {
+          throw new Error('Failed to create session');
         }
+        
+        router.push(callbackUrl);
         setLoading(false);
         googleSignInInProgress.current = false;
+      } catch (popupError: unknown) {
+        const error = popupError as { code?: string; message?: string };
+        console.error('Popup sign-in error:', error);
+        
+        // Check for specific error codes that indicate popup issues
+        const popupErrorCodes = [
+          'auth/popup-blocked',
+          'auth/popup-closed-by-user',
+          'auth/cancelled-popup-request',
+          'auth/unauthorized-domain',
+          'auth/operation-not-allowed',
+        ];
+        
+        const isPopupError = popupErrorCodes.includes(error?.code || '') ||
+          error?.message?.toLowerCase().includes('popup') ||
+          error?.message?.toLowerCase().includes('redirect_uri_mismatch') ||
+          error?.message?.toLowerCase().includes('unauthorized') ||
+          error?.message?.toLowerCase().includes('user activation');
+        
+        if (isPopupError && error?.code !== 'auth/popup-closed-by-user') {
+          // Fallback to redirect method
+          console.log('Falling back to redirect method...');
+          try {
+            await signInWithRedirect(auth, provider);
+            // Don't set loading to false - we're redirecting
+            googleSignInInProgress.current = false;
+            return;
+          } catch (redirectError) {
+            console.error('Redirect sign-in error:', redirectError);
+            const redirectErr = redirectError as { code?: string; message?: string };
+            
+            // Provide specific error messages
+            if (redirectErr?.code === 'auth/unauthorized-domain') {
+              setError('Domain not authorized. Please check Firebase and Google Cloud Console settings.');
+            } else if (redirectErr?.message?.includes('redirect_uri_mismatch')) {
+              setError('OAuth configuration error. Please verify redirect URIs in Google Cloud Console.');
+            } else {
+              setError('Sign-in failed. Please try again or check your browser console for details.');
+            }
+            setLoading(false);
+            googleSignInInProgress.current = false;
+          }
+        } else if (error?.code === 'auth/popup-closed-by-user') {
+          // User closed the popup intentionally
+          setError(null); // Don't show error for user cancellation
+          setLoading(false);
+          googleSignInInProgress.current = false;
+        } else {
+          // Other errors
+          let errorMessage = 'Google sign-in failed. ';
+          
+          if (error?.code === 'auth/unauthorized-domain') {
+            errorMessage += 'Domain not authorized. Please check Firebase Console settings.';
+          } else if (error?.code === 'auth/operation-not-allowed') {
+            errorMessage += 'Google sign-in is not enabled. Please enable it in Firebase Console.';
+          } else if (error?.message?.toLowerCase().includes('redirect_uri_mismatch')) {
+            errorMessage += 'OAuth configuration error. Please check Google Cloud Console.';
+          } else {
+            errorMessage += 'Please try again or use redirect method.';
+          }
+          
+          setError(errorMessage);
+          setLoading(false);
+          googleSignInInProgress.current = false;
+        }
       }
     } catch (err: unknown) {
       const error = err as { code?: string; message?: string };
