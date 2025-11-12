@@ -118,11 +118,37 @@ function DashboardContent() {
           };
           await loadEAs();
           
-          // If payment was successful, reload EAs after a short delay to ensure webhook processed
+          // If payment was successful, try to complete the order in case webhook failed
           if (paymentSuccess) {
-            setTimeout(() => {
-              loadEAs();
-            }, 2000);
+            const orderId = searchParams.get('orderId');
+            if (orderId) {
+              console.log('🔄 Payment success detected, completing order:', orderId);
+              try {
+                const completeRes = await fetch('/api/complete-order-manual', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ orderId }),
+                });
+                const completeData = await completeRes.json();
+                console.log('✅ Order completion result:', completeData);
+                
+                // Reload EAs after completion
+                setTimeout(() => {
+                  loadEAs();
+                }, 1000);
+              } catch (error) {
+                console.error('❌ Failed to complete order:', error);
+                // Still reload EAs in case webhook worked
+                setTimeout(() => {
+                  loadEAs();
+                }, 2000);
+              }
+            } else {
+              // No orderId, just reload after delay
+              setTimeout(() => {
+                loadEAs();
+              }, 2000);
+            }
           }
           
           setIsLoading(false);
@@ -132,7 +158,7 @@ function DashboardContent() {
       }
     };
     checkAuth();
-  }, [router, paymentSuccess]);
+  }, [router, paymentSuccess, searchParams]);
 
   if (isLoading) {
     return (

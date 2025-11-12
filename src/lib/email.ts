@@ -22,13 +22,20 @@ export async function sendConfirmationEmail(
     // Check if email credentials are configured
     if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
       console.error('❌ Email not configured: SMTP_USER or SMTP_PASSWORD missing');
-      throw new Error('Email service not configured. Please set SMTP_USER and SMTP_PASSWORD in environment variables.');
+      console.error('   Set these environment variables:');
+      console.error('   - SMTP_USER (your Gmail address)');
+      console.error('   - SMTP_PASSWORD (your Gmail App Password)');
+      console.error('   - FROM_EMAIL (optional, defaults to noreply@akavanta.com)');
+      console.error('   Order completed successfully but email was not sent.');
+      // Don't throw - just log and continue
+      return;
     }
 
     console.log(`📧 Preparing email to ${email} for order ${orderId}`, {
       smtpHost: process.env.SMTP_HOST,
       smtpPort: process.env.SMTP_PORT,
       smtpUser: process.env.SMTP_USER,
+      passwordConfigured: !!process.env.SMTP_PASSWORD,
       passwordLength: smtpPassword.length,
       fromEmail: process.env.FROM_EMAIL,
     });
