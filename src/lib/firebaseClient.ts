@@ -1,9 +1,21 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, Auth } from "firebase/auth";
 
 let app: FirebaseApp | undefined;
 
+// Check if we're in a browser environment
+function isBrowser(): boolean {
+  return typeof window !== 'undefined';
+}
+
 export function getFirebaseApp(): FirebaseApp {
+  // Only initialize Firebase in the browser
+  if (!isBrowser()) {
+    // Return a mock app object during SSR to prevent errors
+    // This should never actually be used since client components only run in the browser
+    return {} as FirebaseApp;
+  }
+
   if (!app) {
     const existing = getApps()[0];
     if (existing) {
@@ -52,7 +64,12 @@ export function getFirebaseApp(): FirebaseApp {
   return app;
 }
 
-export function getFirebaseAuth() {
+export function getFirebaseAuth(): Auth {
+  if (!isBrowser()) {
+    // Return a mock auth object during SSR to prevent errors
+    // This should never actually be used since client components only run in the browser
+    return {} as Auth;
+  }
   return getAuth(getFirebaseApp());
 }
 
