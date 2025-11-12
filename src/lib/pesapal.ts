@@ -16,8 +16,13 @@ function getAppBaseUrl(): string {
 // Pesapal Production Configuration
 // Production URL: https://api.pesapal.com
 // Sandbox URL: https://cybqa.pesapal.com
+// Helper to normalize base URL (remove trailing slashes)
+function normalizeBaseUrl(url: string): string {
+  return url.replace(/\/+$/, '');
+}
+
 const PESAPAL_CONFIG = {
-  baseUrl: process.env.PESAPAL_BASE_URL || 'https://api.pesapal.com', // Production URL (default)
+  baseUrl: normalizeBaseUrl(process.env.PESAPAL_BASE_URL || 'https://api.pesapal.com'), // Production URL (default)
   consumerKey: process.env.PESAPAL_CONSUMER_KEY,
   consumerSecret: process.env.PESAPAL_CONSUMER_SECRET,
   // Use PESAPAL_CALLBACK_URL if set, otherwise construct from base URL
@@ -62,6 +67,13 @@ async function getPesapalAccessToken(): Promise<string> {
       authUrl = `${PESAPAL_CONFIG.baseUrl}/pesapalv3/api/Auth/RequestToken`;
     }
 
+    console.log('🔐 Pesapal Auth Request:', {
+      baseUrl: PESAPAL_CONFIG.baseUrl,
+      authUrl: authUrl,
+      hasConsumerKey: !!PESAPAL_CONFIG.consumerKey,
+      hasConsumerSecret: !!PESAPAL_CONFIG.consumerSecret,
+    });
+
     const response = await axios.post(
       authUrl,
       {
@@ -73,22 +85,52 @@ async function getPesapalAccessToken(): Promise<string> {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
+        timeout: 30000, // 30 second timeout
       }
     );
 
+    console.log('🔐 Pesapal Auth Response:', {
+      status: response.status,
+      hasToken: !!response.data?.token,
+      data: response.data,
+    });
+
     if (!response.data.token) {
+      console.error('❌ Invalid Pesapal auth response - no token:', response.data);
       throw new Error('Invalid response from Pesapal auth endpoint');
     }
 
     return response.data.token;
   } catch (error) {
-    const err = error as { response?: { data?: { message?: string; error?: string } }; message?: string };
-    console.error('Error getting Pesapal access token:', err.response?.data || err.message);
-    throw new Error(
-      err.response?.data?.message || 
-      err.response?.data?.error || 
-      'Failed to get Pesapal access token'
-    );
+    const err = error as { 
+      response?: { 
+        status?: number;
+        statusText?: string;
+        data?: { message?: string; error?: string; error_description?: string }; 
+      }; 
+      message?: string;
+      code?: string;
+    };
+    
+    console.error('❌ Error getting Pesapal access token:', {
+      message: err.message,
+      code: err.code,
+      status: err.response?.status,
+      statusText: err.response?.statusText,
+      responseData: err.response?.data,
+      baseUrl: PESAPAL_CONFIG.baseUrl,
+      authUrl: PESAPAL_CONFIG.baseUrl.includes('/pesapalv3') 
+        ? `${PESAPAL_CONFIG.baseUrl}/api/Auth/RequestToken`
+        : `${PESAPAL_CONFIG.baseUrl}/pesapalv3/api/Auth/RequestToken`,
+    });
+    
+    const errorMessage = err.response?.data?.message || 
+                        err.response?.data?.error || 
+                        err.response?.data?.error_description ||
+                        err.message || 
+                        'Failed to get Pesapal access token';
+    
+    throw new Error(errorMessage);
   }
 }
 
