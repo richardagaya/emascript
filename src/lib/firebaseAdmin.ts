@@ -11,31 +11,57 @@ function getAdminApp(): App {
 
   // Check if we're in build time or missing credentials
   if (!process.env.FIREBASE_ADMIN_PROJECT_ID) {
-    console.warn('Firebase Admin credentials not available - skipping initialization');
+    console.warn('⚠️ Firebase Admin credentials not available - skipping initialization');
     // Return a dummy app that won't crash but will fail gracefully when used
     throw new Error('Firebase Admin not configured - please set FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, and FIREBASE_ADMIN_PRIVATE_KEY environment variables');
+  }
+  
+  if (!process.env.FIREBASE_ADMIN_CLIENT_EMAIL) {
+    console.warn('⚠️ FIREBASE_ADMIN_CLIENT_EMAIL not set');
+    throw new Error('Firebase Admin not configured - CLIENT_EMAIL missing');
+  }
+  
+  if (!process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
+    console.warn('⚠️ FIREBASE_ADMIN_PRIVATE_KEY not set');
+    throw new Error('Firebase Admin not configured - PRIVATE_KEY missing');
   }
 
   try {
     console.log('🔑 Initializing Firebase Admin...');
     console.log('Project ID:', process.env.FIREBASE_ADMIN_PROJECT_ID);
-    console.log('Client Email:', process.env.FIREBASE_ADMIN_CLIENT_EMAIL);
+    console.log('Client Email:', process.env.FIREBASE_ADMIN_CLIENT_EMAIL?.substring(0, 20) + '...');
     console.log('Private Key length:', process.env.FIREBASE_ADMIN_PRIVATE_KEY?.length);
-    console.log('Private Key starts with:', process.env.FIREBASE_ADMIN_PRIVATE_KEY?.substring(0, 50));
+    console.log('Private Key starts with:', process.env.FIREBASE_ADMIN_PRIVATE_KEY?.substring(0, 30));
+    console.log('Private Key ends with:', process.env.FIREBASE_ADMIN_PRIVATE_KEY?.substring(process.env.FIREBASE_ADMIN_PRIVATE_KEY.length - 30));
     
-    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    // Try both with and without escape sequence replacement
+    let privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY!;
+    
+    // If it contains literal \n, replace them with actual newlines
+    if (privateKey.includes('\\n')) {
+      console.log('🔄 Replacing \\n with actual newlines...');
+      privateKey = privateKey.replace(/\\n/g, '\n');
+    }
+    
+    console.log('After processing - Key starts with:', privateKey.substring(0, 30));
+    console.log('After processing - Key ends with:', privateKey.substring(privateKey.length - 30));
     
     return initializeApp({
       credential: cert({
         projectId: process.env.FIREBASE_ADMIN_PROJECT_ID!,
         clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL!,
-        privateKey: privateKey!,
+        privateKey: privateKey,
       }),
       storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
     });
   } catch (error) {
     console.error('❌ Firebase admin initialization error:', error);
-    console.error('Error details:', JSON.stringify(error, null, 2));
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+    // DON'T throw - let the app start anyway
+    console.warn('⚠️ Continuing without Firebase Admin - routes will fail at runtime');
     throw error;
   }
 }
