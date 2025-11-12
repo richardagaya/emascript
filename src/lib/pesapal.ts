@@ -169,31 +169,46 @@ export async function initializePesapalPayment(
     // 2. An IPN URL (Pesapal will use it directly) - must be a valid HTTPS URL
     let notificationId: string;
     
-    if (process.env.PESAPAL_IPN_ID) {
+    // Check if PESAPAL_IPN_ID is set and not empty
+    const ipnId = process.env.PESAPAL_IPN_ID?.trim();
+    
+    if (ipnId && ipnId.length > 0) {
       // Use IPN ID if provided (should be a UUID string from Pesapal)
-      notificationId = process.env.PESAPAL_IPN_ID.trim();
-      // Validate IPN ID format (should be a UUID-like string)
-      if (!notificationId || notificationId.length < 10) {
-        throw new Error('Invalid PESAPAL_IPN_ID format. IPN ID should be a valid UUID string from Pesapal.');
+      notificationId = ipnId;
+      // Validate IPN ID format (should be a UUID-like string, at least 10 chars)
+      if (notificationId.length < 10) {
+        throw new Error(`Invalid PESAPAL_IPN_ID format. IPN ID should be a valid UUID string from Pesapal. Got: "${notificationId.substring(0, 10)}..." (length: ${notificationId.length})`);
       }
     } else {
       // Use IPN URL if no IPN ID is provided
-      notificationId = PESAPAL_CONFIG.ipnUrl;
+      // Priority: PESAPAL_IPN_URL env var > auto-detected URL
+      notificationId = process.env.PESAPAL_IPN_URL?.trim() || PESAPAL_CONFIG.ipnUrl;
+      
       // Validate URL format
-      if (!notificationId || (!notificationId.startsWith('http://') && !notificationId.startsWith('https://'))) {
-        throw new Error(`Invalid IPN URL format: ${notificationId}. Must be a valid HTTP/HTTPS URL.`);
+      if (!notificationId) {
+        throw new Error('IPN URL is not configured. Set PESAPAL_IPN_URL environment variable or ensure PESAPAL_IPN_ID is set.');
+      }
+      
+      if (!notificationId.startsWith('http://') && !notificationId.startsWith('https://')) {
+        throw new Error(`Invalid IPN URL format: "${notificationId}". Must be a valid HTTP/HTTPS URL (e.g., https://emascript.vercel.app/api/payment-webhook)`);
+      }
+      
+      // Warn if using HTTP in production (should use HTTPS)
+      if (notificationId.startsWith('http://') && !notificationId.includes('localhost')) {
+        console.warn('⚠️  Using HTTP for IPN URL. HTTPS is required for production.');
       }
     }
     
     // Log IPN configuration - IMPORTANT for debugging webhook issues
     console.log('📡 Pesapal IPN Configuration:', {
-      hasIPNId: !!process.env.PESAPAL_IPN_ID,
-      ipnId: process.env.PESAPAL_IPN_ID ? '***' : undefined, // Don't log full IPN ID
-      ipnUrl: PESAPAL_CONFIG.ipnUrl,
+      hasIPNId: !!ipnId && ipnId.length > 0,
+      hasIPNUrlEnv: !!process.env.PESAPAL_IPN_URL,
+      ipnUrlFromConfig: PESAPAL_CONFIG.ipnUrl,
       callbackUrl: PESAPAL_CONFIG.callbackUrl,
-      notification_id: process.env.PESAPAL_IPN_ID ? 'IPN_ID (hidden)' : notificationId,
-      notification_id_type: process.env.PESAPAL_IPN_ID ? 'IPN_ID' : 'IPN_URL',
+      notification_id: ipnId ? `IPN_ID: ${ipnId.substring(0, 8)}...` : `IPN_URL: ${notificationId}`,
+      notification_id_type: ipnId ? 'IPN_ID' : 'IPN_URL',
       notification_id_length: notificationId.length,
+      notification_id_preview: notificationId.substring(0, 50) + (notificationId.length > 50 ? '...' : ''),
     });
     
     const paymentRequest = {
