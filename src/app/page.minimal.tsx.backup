@@ -1,0 +1,9 @@
+export default function Home() {
+  return (
+    <div style={{ padding: '50px', textAlign: 'center' }}>
+      <h1>Akavanta - Site is loading!</h1>
+      <p>Basic test successful</p>
+    </div>
+  );
+}
+
