@@ -165,21 +165,35 @@ export async function initializePesapalPayment(
     // Pesapal payment request payload
     // According to Pesapal API v3 documentation
     // Note: notification_id can be either:
-    // 1. A registered IPN ID (from registerPesapalIPN)
-    // 2. An IPN URL (Pesapal will use it directly)
-    // We use the URL directly for simplicity
-    const ipnIdOrUrl = process.env.PESAPAL_IPN_ID || PESAPAL_CONFIG.ipnUrl;
+    // 1. A registered IPN ID (from registerPesapalIPN) - must be a valid UUID string
+    // 2. An IPN URL (Pesapal will use it directly) - must be a valid HTTPS URL
+    let notificationId: string;
+    
+    if (process.env.PESAPAL_IPN_ID) {
+      // Use IPN ID if provided (should be a UUID string from Pesapal)
+      notificationId = process.env.PESAPAL_IPN_ID.trim();
+      // Validate IPN ID format (should be a UUID-like string)
+      if (!notificationId || notificationId.length < 10) {
+        throw new Error('Invalid PESAPAL_IPN_ID format. IPN ID should be a valid UUID string from Pesapal.');
+      }
+    } else {
+      // Use IPN URL if no IPN ID is provided
+      notificationId = PESAPAL_CONFIG.ipnUrl;
+      // Validate URL format
+      if (!notificationId || (!notificationId.startsWith('http://') && !notificationId.startsWith('https://'))) {
+        throw new Error(`Invalid IPN URL format: ${notificationId}. Must be a valid HTTP/HTTPS URL.`);
+      }
+    }
     
     // Log IPN configuration - IMPORTANT for debugging webhook issues
     console.log('📡 Pesapal IPN Configuration:', {
       hasIPNId: !!process.env.PESAPAL_IPN_ID,
+      ipnId: process.env.PESAPAL_IPN_ID ? '***' : undefined, // Don't log full IPN ID
       ipnUrl: PESAPAL_CONFIG.ipnUrl,
       callbackUrl: PESAPAL_CONFIG.callbackUrl,
-      notification_id: ipnIdOrUrl,
+      notification_id: process.env.PESAPAL_IPN_ID ? 'IPN_ID (hidden)' : notificationId,
       notification_id_type: process.env.PESAPAL_IPN_ID ? 'IPN_ID' : 'IPN_URL',
-      warning: !process.env.PESAPAL_IPN_URL && !process.env.PESAPAL_IPN_ID 
-        ? 'Using auto-detected URL. If testing on Vercel but IPN is configured for akavanta.com (Firebase), set PESAPAL_IPN_URL to Vercel URL' 
-        : undefined,
+      notification_id_length: notificationId.length,
     });
     
     const paymentRequest = {
@@ -188,7 +202,7 @@ export async function initializePesapalPayment(
       amount: paymentData.amount, // Payment amount
       description: paymentData.description, // Order description
       callback_url: PESAPAL_CONFIG.callbackUrl, // URL to redirect after payment
-      notification_id: ipnIdOrUrl, // IPN ID or URL - Pesapal will send webhook here
+      notification_id: notificationId, // IPN ID (UUID string) or IPN URL (HTTPS URL)
       billing_address: {
         phone_number: paymentData.phoneNumber,
         email_address: paymentData.email,
