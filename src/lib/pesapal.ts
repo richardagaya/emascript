@@ -40,8 +40,11 @@ const PESAPAL_CONFIG = {
   consumerKey: process.env.PESAPAL_CONSUMER_KEY,
   consumerSecret: process.env.PESAPAL_CONSUMER_SECRET,
   // Use PESAPAL_CALLBACK_URL if set, otherwise construct from base URL
+  // For testing on Vercel, you can override this to point to Vercel domain
   callbackUrl: process.env.PESAPAL_CALLBACK_URL || `${getAppBaseUrl()}/api/payment-webhook`,
   // Use PESAPAL_IPN_URL if set, otherwise construct from base URL
+  // IMPORTANT: If testing on Vercel but IPN is configured for akavanta.com (Firebase),
+  // set PESAPAL_IPN_URL to your Vercel URL temporarily: https://emascript.vercel.app/api/payment-webhook
   ipnUrl: process.env.PESAPAL_IPN_URL || `${getAppBaseUrl()}/api/payment-webhook`,
 };
 
@@ -160,13 +163,27 @@ export async function initializePesapalPayment(
     // 1. A registered IPN ID (from registerPesapalIPN)
     // 2. An IPN URL (Pesapal will use it directly)
     // We use the URL directly for simplicity
+    const ipnIdOrUrl = process.env.PESAPAL_IPN_ID || PESAPAL_CONFIG.ipnUrl;
+    
+    // Log IPN configuration - IMPORTANT for debugging webhook issues
+    console.log('📡 Pesapal IPN Configuration:', {
+      hasIPNId: !!process.env.PESAPAL_IPN_ID,
+      ipnUrl: PESAPAL_CONFIG.ipnUrl,
+      callbackUrl: PESAPAL_CONFIG.callbackUrl,
+      notification_id: ipnIdOrUrl,
+      notification_id_type: process.env.PESAPAL_IPN_ID ? 'IPN_ID' : 'IPN_URL',
+      warning: !process.env.PESAPAL_IPN_URL && !process.env.PESAPAL_IPN_ID 
+        ? 'Using auto-detected URL. If testing on Vercel but IPN is configured for akavanta.com (Firebase), set PESAPAL_IPN_URL to Vercel URL' 
+        : undefined,
+    });
+    
     const paymentRequest = {
       id: paymentData.orderId, // Unique order ID
       currency: paymentData.currency, // Currency code (KES, USD, etc.)
       amount: paymentData.amount, // Payment amount
       description: paymentData.description, // Order description
       callback_url: PESAPAL_CONFIG.callbackUrl, // URL to redirect after payment
-      notification_id: process.env.PESAPAL_IPN_ID || PESAPAL_CONFIG.ipnUrl,
+      notification_id: ipnIdOrUrl, // IPN ID or URL - Pesapal will send webhook here
       billing_address: {
         phone_number: paymentData.phoneNumber,
         email_address: paymentData.email,

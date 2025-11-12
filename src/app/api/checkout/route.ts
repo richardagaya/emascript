@@ -103,15 +103,15 @@ export async function POST(req: NextRequest) {
     const priceUSD = eaData.price;
     
     // Determine currency based on payment method
-    // M-Pesa uses KES (Kenyan Shillings), others use USD
-    const currency = paymentMethod === 'mpesa' ? 'KES' : 'USD';
-    // Convert USD to KES if using M-Pesa (approximate rate: 1 USD = 130 KES)
+    // M-Pesa and Pesapal use KES (Kenyan Shillings), PayPal uses USD
+    const currency = (paymentMethod === 'mpesa' || paymentMethod === 'pesapal') ? 'KES' : 'USD';
+    // Convert USD to KES if using M-Pesa or Pesapal (approximate rate: 1 USD = 130 KES)
     const exchangeRate = 130; // TODO: Use actual exchange rate API
-    const amount = paymentMethod === 'mpesa' ? priceUSD * exchangeRate : priceUSD;
+    const amount = (paymentMethod === 'mpesa' || paymentMethod === 'pesapal') ? priceUSD * exchangeRate : priceUSD;
     
     // Initialize payment based on method
     console.log(`Initializing ${paymentMethod} payment for order ${orderId}...`);
-    console.log(`Payment details: amount=${amount}, currency=${currency}, email=${email}`);
+    console.log(`Payment details: amount=${amount}, currency=${currency}, email=${email}, phone=${phone}`);
     
     try {
       if (paymentMethod === 'mpesa') {
@@ -125,6 +125,14 @@ export async function POST(req: NextRequest) {
           botName,
         });
       } else if (paymentMethod === 'pesapal') {
+        console.log('🔵 Initializing Pesapal payment with:', {
+          orderId,
+          amount,
+          currency,
+          phoneNumber: phone,
+          email,
+          botName,
+        });
         paymentResult = await initializePesapalPayment({
           orderId,
           amount,
@@ -134,6 +142,7 @@ export async function POST(req: NextRequest) {
           description: `Purchase of ${botName} - Expert Advisor`,
           botName,
         });
+        console.log('🔵 Pesapal payment result:', paymentResult);
       } else if (paymentMethod === 'paypal') {
         paymentResult = await initializePayPalPayment({
           orderId,
@@ -159,8 +168,12 @@ export async function POST(req: NextRequest) {
         error: paymentResult.error,
       });
     } catch (paymentError) {
-      const error = paymentError as { message?: string };
-      console.error(`Error initializing ${paymentMethod} payment:`, paymentError);
+      const error = paymentError as { message?: string; response?: any };
+      console.error(`❌ Error initializing ${paymentMethod} payment:`, {
+        message: error.message,
+        stack: (paymentError as Error).stack,
+        response: error.response,
+      });
       return NextResponse.json({
         success: false,
         error: error.message || `Failed to initialize ${paymentMethod} payment`,
@@ -169,10 +182,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (!paymentResult.success) {
+      console.error(`❌ Payment initialization failed for ${paymentMethod}:`, {
+        error: paymentResult.error,
+        orderId,
+        paymentMethod,
+      });
       return NextResponse.json({
         success: false,
         error: paymentResult.error || 'Payment initialization failed',
         orderId,
+        paymentMethod,
       }, { status: 400 });
     }
 
