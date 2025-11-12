@@ -8,9 +8,30 @@ import axios from 'axios';
 // Pesapal API configuration
 // Helper function to get base URL from environment variables
 function getAppBaseUrl(): string {
-  return process.env.NEXTAUTH_URL || 
-         process.env.NEXT_PUBLIC_APP_URL || 
-         'http://localhost:3000';
+  // Priority order for base URL:
+  // 1. Explicitly set callback URL (for testing on different domains)
+  // 2. Vercel URL (automatically set by Vercel - for testing)
+  // 3. Explicitly set app URL (for production domain like akavanta.com)
+  // 4. NextAuth URL (if using NextAuth)
+  // 5. Fallback to localhost for local development
+  
+  // Check for Vercel URL first (for testing)
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  
+  // Check for explicit app URL
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, ''); // Remove trailing slashes
+  }
+  
+  // Check for NextAuth URL
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL.replace(/\/+$/, ''); // Remove trailing slashes
+  }
+  
+  // Fallback to localhost for local development
+  return 'http://localhost:3000';
 }
 
 // Pesapal Production Configuration
