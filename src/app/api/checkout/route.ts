@@ -100,14 +100,22 @@ export async function POST(req: NextRequest) {
     };
     
     // Use price from EA data (already fetched above)
-    const priceUSD = eaData.price;
+    // Note: Prices in EA data are stored in the currency they're displayed in
+    // For Pesapal/M-Pesa: prices are in KES, for PayPal: prices are in USD
+    const basePrice = eaData.price;
     
     // Determine currency based on payment method
     // M-Pesa and Pesapal use KES (Kenyan Shillings), PayPal uses USD
     const currency = (paymentMethod === 'mpesa' || paymentMethod === 'pesapal') ? 'KES' : 'USD';
-    // Convert USD to KES if using M-Pesa or Pesapal (approximate rate: 1 USD = 130 KES)
-    const exchangeRate = 130; // TODO: Use actual exchange rate API
-    const amount = (paymentMethod === 'mpesa' || paymentMethod === 'pesapal') ? priceUSD * exchangeRate : priceUSD;
+    
+    // For now, assume prices are already in the correct currency
+    // If you need conversion, uncomment and adjust the exchange rate
+    // const exchangeRate = 130; // 1 USD = 130 KES
+    // const amount = (paymentMethod === 'mpesa' || paymentMethod === 'pesapal') ? basePrice : basePrice;
+    
+    // Use the base price directly (assuming prices are stored in the correct currency)
+    // Round to 2 decimal places for payment gateways
+    const amount = Math.round(basePrice * 100) / 100;
     
     // Initialize payment based on method
     console.log(`Initializing ${paymentMethod} payment for order ${orderId}...`);

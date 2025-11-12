@@ -211,10 +211,14 @@ export async function initializePesapalPayment(
       notification_id_preview: notificationId.substring(0, 50) + (notificationId.length > 50 ? '...' : ''),
     });
     
+    // Format amount - Pesapal expects a number, ensure it's properly formatted
+    // Round to 2 decimal places to avoid floating point issues
+    const formattedAmount = Math.round(paymentData.amount * 100) / 100;
+    
     const paymentRequest = {
       id: paymentData.orderId, // Unique order ID
       currency: paymentData.currency, // Currency code (KES, USD, etc.)
-      amount: paymentData.amount, // Payment amount
+      amount: formattedAmount, // Payment amount (number, rounded to 2 decimals)
       description: paymentData.description, // Order description
       callback_url: PESAPAL_CONFIG.callbackUrl, // URL to redirect after payment
       notification_id: notificationId, // IPN ID (UUID string) or IPN URL (HTTPS URL)
@@ -224,6 +228,13 @@ export async function initializePesapalPayment(
         country_code: 'KE', // ISO country code
       },
     };
+    
+    console.log('💰 Payment Amount Details:', {
+      originalAmount: paymentData.amount,
+      formattedAmount: formattedAmount,
+      currency: paymentData.currency,
+      amountType: typeof formattedAmount,
+    });
 
     // Use the helper function to construct the URL consistently
     const apiUrl = getPesapalApiUrl('Transactions/SubmitOrderRequest');
