@@ -118,7 +118,22 @@ function LoginContent() {
     googleSignInInProgress.current = true;
     
     try {
-      const auth = getFirebaseAuth();
+      // Validate Firebase configuration before attempting sign-in
+      let auth;
+      try {
+        auth = getFirebaseAuth();
+      } catch (configError: unknown) {
+        const configErr = configError as Error;
+        console.error('Firebase configuration error:', configErr);
+        setError(
+          configErr.message || 
+          'Firebase is not properly configured. Please check your environment variables.'
+        );
+        setLoading(false);
+        googleSignInInProgress.current = false;
+        return;
+      }
+
       const provider = new GoogleAuthProvider();
       
       // Set custom parameters to ensure proper OAuth flow
@@ -126,10 +141,12 @@ function LoginContent() {
         prompt: 'select_account',
       });
       
-      // Always try popup first for better UX
-      // If it fails, fallback to redirect
+      // Check if we're in a browser environment that supports popups
+      // If API key validation fails, use redirect method directly
+      // Always try popup first for better UX, but fallback to redirect on errors
       try {
         // Open popup synchronously within the user gesture handler
+        // This must be called directly in response to user interaction
         const popupPromise = signInWithPopup(auth, provider);
         const cred = await popupPromise;
         const idToken = await cred.user.getIdToken();
@@ -151,6 +168,29 @@ function LoginContent() {
         const error = popupError as { code?: string; message?: string };
         console.error('Popup sign-in error:', error);
         
+        // Check for API key errors specifically
+        // If API key is invalid, try redirect method as fallback
+        if (error?.code === 'auth/api-key-not-valid' || 
+            error?.message?.toLowerCase().includes('api-key-not-valid') ||
+            error?.message?.toLowerCase().includes('api key')) {
+          console.warn('API key validation failed, attempting redirect method...');
+          // Try redirect method as fallback for API key issues
+          try {
+            await signInWithRedirect(auth, provider);
+            googleSignInInProgress.current = false;
+            return;
+          } catch (redirectError) {
+            console.error('Redirect also failed:', redirectError);
+            setError(
+              'Firebase API key is invalid. Please verify your NEXT_PUBLIC_FIREBASE_API_KEY environment variable matches your Firebase project settings. ' +
+              'Make sure you\'ve restarted your development server after updating environment variables.'
+            );
+            setLoading(false);
+            googleSignInInProgress.current = false;
+            return;
+          }
+        }
+        
         // Check for specific error codes that indicate popup issues
         const popupErrorCodes = [
           'auth/popup-blocked',
@@ -163,7 +203,8 @@ function LoginContent() {
         const isPopupError = popupErrorCodes.includes(error?.code || '') ||
           error?.message?.toLowerCase().includes('popup') ||
           error?.message?.toLowerCase().includes('redirect_uri_mismatch') ||
-          error?.message?.toLowerCase().includes('unauthorized');
+          error?.message?.toLowerCase().includes('unauthorized') ||
+          error?.message?.toLowerCase().includes('user activation');
         
         if (isPopupError && error?.code !== 'auth/popup-closed-by-user') {
           // Fallback to redirect method
@@ -182,6 +223,8 @@ function LoginContent() {
               setError('Domain not authorized. Please check Firebase and Google Cloud Console settings.');
             } else if (redirectErr?.message?.includes('redirect_uri_mismatch')) {
               setError('OAuth configuration error. Please verify redirect URIs in Google Cloud Console.');
+            } else if (redirectErr?.code === 'auth/api-key-not-valid') {
+              setError('Firebase API key is invalid. Please check your environment variables.');
             } else {
               setError('Sign-in failed. Please try again or check your browser console for details.');
             }
@@ -201,7 +244,9 @@ function LoginContent() {
             errorMessage += 'Domain not authorized. Please check Firebase Console settings.';
           } else if (error?.code === 'auth/operation-not-allowed') {
             errorMessage += 'Google sign-in is not enabled. Please enable it in Firebase Console.';
-          } else if (error?.message?.includes('redirect_uri_mismatch')) {
+          } else if (error?.code === 'auth/api-key-not-valid') {
+            errorMessage += 'Firebase API key is invalid. Please check your environment variables.';
+          } else if (error?.message?.toLowerCase().includes('redirect_uri_mismatch')) {
             errorMessage += 'OAuth configuration error. Please check Google Cloud Console.';
           } else {
             errorMessage += 'Please try again or use redirect method.';
@@ -215,7 +260,14 @@ function LoginContent() {
     } catch (err: unknown) {
       const error = err as { code?: string; message?: string };
       console.error('Unexpected Google sign-in error:', error);
-      setError('An unexpected error occurred. Please try again.');
+      
+      // Check if it's a configuration error
+      if (error?.message?.toLowerCase().includes('firebase configuration') ||
+          error?.message?.toLowerCase().includes('environment variable')) {
+        setError(error.message || 'Firebase is not properly configured.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
       setLoading(false);
       googleSignInInProgress.current = false;
     }
