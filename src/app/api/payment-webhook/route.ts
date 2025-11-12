@@ -38,15 +38,29 @@ export async function GET(req: NextRequest) {
                    searchParams.get('payment_status') ||
                    searchParams.get('PaymentStatus');
     
+    // Log all incoming parameters for debugging
+    console.log('🔔 Pesapal Webhook Received (GET):', {
+      allParams,
+      transactionTrackingId,
+      merchantReference,
+      orderId,
+      status,
+      isBrowser,
+      userAgent,
+      url: req.url,
+    });
+    
     // Handle Pesapal IPN format (with any parameter name format)
     if (transactionTrackingId && merchantReference) {
+      console.log('✅ Pesapal IPN detected:', { transactionTrackingId, merchantReference });
+      
       // Get order from Firestore using merchant reference (orderId)
       try {
         const orderRef = adminDb.collection('orders').doc(merchantReference);
         const orderDoc = await orderRef.get();
         
         if (!orderDoc.exists) {
-          console.error(`Order not found: ${merchantReference}`);
+          console.error(`❌ Order not found in Firestore: ${merchantReference}`);
           // Still return success to Pesapal to avoid retries
           return NextResponse.json({
             OrderTrackingId: transactionTrackingId,
@@ -55,10 +69,22 @@ export async function GET(req: NextRequest) {
         }
         
         const orderData = orderDoc.data();
+        console.log('📦 Order found:', {
+          orderId: merchantReference,
+          currentStatus: orderData?.status,
+          botName: orderData?.botName,
+          email: orderData?.email,
+        });
         
         // If browser redirect after payment, assume payment was successful (user wouldn't be redirected if payment failed)
         // For server-to-server IPN calls, verify with Pesapal API
         const shouldProcessPayment = isBrowser || orderData?.status === 'pending';
+        
+        console.log('🔍 Payment processing check:', {
+          shouldProcessPayment,
+          isBrowser,
+          orderStatus: orderData?.status,
+        });
         
         if (shouldProcessPayment) {
           // Verify the payment status with Pesapal (only if not already completed)
@@ -66,19 +92,25 @@ export async function GET(req: NextRequest) {
           
           if (!isBrowser) {
             // For server-to-server IPN, verify with Pesapal
+            console.log('🔐 Verifying payment with Pesapal API...');
             try {
               verification = await verifyPesapalPayment(transactionTrackingId);
+              console.log('✅ Pesapal verification result:', verification);
             } catch (verifyError) {
               const error = verifyError as { message?: string };
-              console.error('Pesapal verification error:', verifyError);
+              console.error('❌ Pesapal verification error:', verifyError);
               // If verification fails but it's a browser redirect, still process (user completed payment)
               verification = { success: isBrowser, error: error?.message };
             }
+          } else {
+            console.log('🌐 Browser redirect detected - assuming payment success');
           }
           
           if (verification.success || orderData?.status === 'pending') {
             // Payment completed - verify if not already completed
             if (orderData?.status !== 'completed') {
+              console.log('💰 Processing payment completion...');
+              
               await orderRef.update({
                 status: 'completed',
                 transactionId: transactionTrackingId,
@@ -86,29 +118,38 @@ export async function GET(req: NextRequest) {
                 updatedAt: new Date().toISOString(),
               });
               
+              console.log('✅ Order status updated to completed');
+              
               // Add EA to user's account
               try {
+                console.log('📦 Adding EA to user account...');
                 await addEAToUserAccount(
                   orderData!.email,
                   orderData!.botName,
                   merchantReference
                 );
+                console.log('✅ EA added to user account successfully');
               } catch (eaError) {
                 const error = eaError as { message?: string };
-                console.error(`Failed to add EA to user account:`, error?.message || eaError);
+                console.error(`❌ Failed to add EA to user account:`, error?.message || eaError);
               }
               
               // Send confirmation email
               try {
+                console.log('📧 Sending confirmation email...');
                 await sendConfirmationEmail(orderData!.email, orderData!.botName, merchantReference);
+                console.log('✅ Confirmation email sent successfully');
               } catch (emailError) {
                 const error = emailError as { message?: string };
-                console.error(`Failed to send confirmation email:`, error?.message || emailError);
+                console.error(`❌ Failed to send confirmation email:`, error?.message || emailError);
               }
+            } else {
+              console.log('ℹ️  Order already completed, skipping processing');
             }
           } else {
             // Payment failed or still pending
             const newStatus = verification.error ? 'failed' : 'pending';
+            console.log(`⚠️  Payment not successful. Status: ${newStatus}`, verification);
             if (orderData?.status !== newStatus) {
               await orderRef.update({
                 status: newStatus,
@@ -117,10 +158,16 @@ export async function GET(req: NextRequest) {
               });
             }
           }
+        } else {
+          console.log('⏭️  Skipping payment processing:', {
+            shouldProcessPayment,
+            isBrowser,
+            orderStatus: orderData?.status,
+          });
         }
       } catch (firestoreError) {
         // Firestore might not be available, but we still need to respond to Pesapal
-        console.error('Firestore error processing Pesapal IPN:', firestoreError);
+        console.error('❌ Firestore error processing Pesapal IPN:', firestoreError);
       }
       
       // If this is a browser redirect (user coming back from payment), redirect to dashboard
