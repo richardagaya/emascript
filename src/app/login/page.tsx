@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, Suspense, useEffect } from "react";
+import { useState, FormEvent, Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebaseClient";
@@ -15,6 +15,7 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
+  const googleSignInInProgress = useRef(false);
 
   // Handle redirect result from Google sign-in
   useEffect(() => {
@@ -107,8 +108,14 @@ function LoginContent() {
   }
 
   async function handleGoogle() {
+    // Prevent multiple simultaneous popup attempts
+    if (googleSignInInProgress.current || loading) {
+      return;
+    }
+    
     setError(null);
     setLoading(true);
+    googleSignInInProgress.current = true;
     
     try {
       const auth = getFirebaseAuth();
@@ -122,7 +129,9 @@ function LoginContent() {
       // Always try popup first for better UX
       // If it fails, fallback to redirect
       try {
-        const cred = await signInWithPopup(auth, provider);
+        // Open popup synchronously within the user gesture handler
+        const popupPromise = signInWithPopup(auth, provider);
+        const cred = await popupPromise;
         const idToken = await cred.user.getIdToken();
         
         const sessionResponse = await fetch("/api/session", {
@@ -137,6 +146,7 @@ function LoginContent() {
         
         router.push(callbackUrl);
         setLoading(false);
+        googleSignInInProgress.current = false;
       } catch (popupError: unknown) {
         const error = popupError as { code?: string; message?: string };
         console.error('Popup sign-in error:', error);
@@ -161,6 +171,7 @@ function LoginContent() {
           try {
             await signInWithRedirect(auth, provider);
             // Don't set loading to false - we're redirecting
+            googleSignInInProgress.current = false;
             return;
           } catch (redirectError) {
             console.error('Redirect sign-in error:', redirectError);
@@ -175,11 +186,13 @@ function LoginContent() {
               setError('Sign-in failed. Please try again or check your browser console for details.');
             }
             setLoading(false);
+            googleSignInInProgress.current = false;
           }
         } else if (error?.code === 'auth/popup-closed-by-user') {
           // User closed the popup intentionally
           setError(null); // Don't show error for user cancellation
           setLoading(false);
+          googleSignInInProgress.current = false;
         } else {
           // Other errors
           let errorMessage = 'Google sign-in failed. ';
@@ -196,6 +209,7 @@ function LoginContent() {
           
           setError(errorMessage);
           setLoading(false);
+          googleSignInInProgress.current = false;
         }
       }
     } catch (err: unknown) {
@@ -203,6 +217,7 @@ function LoginContent() {
       console.error('Unexpected Google sign-in error:', error);
       setError('An unexpected error occurred. Please try again.');
       setLoading(false);
+      googleSignInInProgress.current = false;
     }
   }
 
