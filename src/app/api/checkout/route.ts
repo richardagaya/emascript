@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
         error: paymentResult.error,
       });
     } catch (paymentError) {
-      const error = paymentError as { message?: string; response?: any };
+      const error = paymentError as { message?: string; response?: { data?: unknown; status?: number } };
       console.error(`❌ Error initializing ${paymentMethod} payment:`, {
         message: error.message,
         stack: (paymentError as Error).stack,
