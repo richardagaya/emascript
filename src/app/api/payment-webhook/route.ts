@@ -106,11 +106,18 @@ export async function GET(req: NextRequest) {
             console.log('🌐 Browser redirect detected - assuming payment success');
           }
           
-          if (verification.success || orderData?.status === 'pending') {
-            // Payment completed - verify if not already completed
-            if (orderData?.status !== 'completed') {
+          // For browser redirects, always process if payment seems successful
+          // For server IPN, only process if verification succeeds or order is pending
+          const shouldComplete = isBrowser || verification.success || orderData?.status === 'pending';
+          
+          if (shouldComplete) {
+            // Check if EA and email were already processed by checking if user has the EA
+            const needsProcessing = orderData?.status !== 'completed';
+            
+            if (needsProcessing) {
               console.log('💰 Processing payment completion...');
               
+              // Update order status first
               await orderRef.update({
                 status: 'completed',
                 transactionId: transactionTrackingId,
@@ -120,7 +127,7 @@ export async function GET(req: NextRequest) {
               
               console.log('✅ Order status updated to completed');
               
-              // Add EA to user's account
+              // Add EA to user's account (check if already added to avoid duplicates)
               try {
                 console.log('📦 Adding EA to user account...');
                 await addEAToUserAccount(
@@ -132,6 +139,7 @@ export async function GET(req: NextRequest) {
               } catch (eaError) {
                 const error = eaError as { message?: string };
                 console.error(`❌ Failed to add EA to user account:`, error?.message || eaError);
+                // Don't throw - continue to send email even if EA addition fails
               }
               
               // Send confirmation email
@@ -142,9 +150,56 @@ export async function GET(req: NextRequest) {
               } catch (emailError) {
                 const error = emailError as { message?: string };
                 console.error(`❌ Failed to send confirmation email:`, error?.message || emailError);
+                // Don't throw - email failure shouldn't block the process
               }
             } else {
-              console.log('ℹ️  Order already completed, skipping processing');
+              // Order already completed, but check if EA/email need to be sent
+              console.log('ℹ️  Order already marked as completed');
+              
+              // Try to add EA and send email anyway (in case they failed before)
+              // Check if user already has this EA to avoid duplicates
+              try {
+                const usersRef = adminDb.collection('users');
+                const userQuery = await usersRef.where('email', '==', orderData!.email).limit(1).get();
+                
+                if (!userQuery.empty) {
+                  const userData = userQuery.docs[0].data();
+                  const purchasedEAs = userData.purchasedEAs || [];
+                  const hasEA = purchasedEAs.some((ea: { orderId?: string }) => ea.orderId === merchantReference);
+                  
+                  if (!hasEA) {
+                    console.log('📦 EA not found in user account, adding now...');
+                    await addEAToUserAccount(
+                      orderData!.email,
+                      orderData!.botName,
+                      merchantReference
+                    );
+                    console.log('✅ EA added to user account');
+                  } else {
+                    console.log('ℹ️  EA already in user account');
+                  }
+                } else {
+                  // User doesn't exist, create and add EA
+                  console.log('📦 User not found, creating and adding EA...');
+                  await addEAToUserAccount(
+                    orderData!.email,
+                    orderData!.botName,
+                    merchantReference
+                  );
+                  console.log('✅ User created and EA added');
+                }
+              } catch (eaError) {
+                console.error('❌ Error checking/adding EA:', eaError);
+              }
+              
+              // Try sending email (might have failed before)
+              try {
+                console.log('📧 Attempting to send confirmation email...');
+                await sendConfirmationEmail(orderData!.email, orderData!.botName, merchantReference);
+                console.log('✅ Confirmation email sent');
+              } catch (emailError) {
+                console.error('❌ Email send failed:', emailError);
+              }
             }
           } else {
             // Payment failed or still pending
