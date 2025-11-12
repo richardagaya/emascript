@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Navbar from "@/components/Navbar";
+import Providers from "./providers";
+import TickerTape from "@/components/TickerTape";
+import Footer from "@/components/Footer";
+import EmailCapturePopup from "@/components/EmailCapturePopup";
 
 export const metadata: Metadata = {
-  title: "Akavanta",
-  description: "Forex Trading EAs",
+  title: "Akavanta | Automated Forex EAs",
+  description:
+    "High-performance Expert Advisors (EAs) for automated Forex trading. Backtested strategies, risk controls, and easy onboarding.",
 };
 
 export default function RootLayout({
@@ -13,8 +19,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
-        <main>{children}</main>
+      <body className={`antialiased`}>
+        <Providers>
+          <Navbar />
+          <div className="border-b border-black/[.08] dark:border-white/[.145]">
+            <TickerTape />
+          </div>
+          <main>{children}</main>
+          <EmailCapturePopup />
+        </Providers>
+        <Footer />
       </body>
     </html>
   );
