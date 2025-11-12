@@ -6,27 +6,4 @@ runConfig:
   minInstances: 0
   memory: 512Mi
 
-env:
-  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    secret: NEXT_PUBLIC_FIREBASE_API_KEY
-  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    secret: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-  # Pesapal Configuration
-  - variable: PESAPAL_CONSUMER_KEY
-    secret: PESAPAL_CONSUMER_KEY
-  - variable: PESAPAL_CONSUMER_SECRET
-    secret: PESAPAL_CONSUMER_SECRET
-  - variable: PESAPAL_BASE_URL
-    secret: PESAPAL_BASE_URL
-  - variable: PESAPAL_CALLBACK_URL
-    secret: PESAPAL_CALLBACK_URL
-  - variable: PESAPAL_IPN_URL
-    secret: PESAPAL_IPN_URL
-  - variable: PESAPAL_IPN_ID
-    secret: PESAPAL_IPN_ID
-  # App URL Configuration (used for constructing callback URLs)
-  - variable: NEXT_PUBLIC_APP_URL
-    secret: NEXT_PUBLIC_APP_URL
-
+env: []
