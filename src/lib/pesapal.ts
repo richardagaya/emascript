@@ -16,9 +16,23 @@ function getAppBaseUrl(): string {
 // Pesapal Production Configuration
 // Production URL: https://api.pesapal.com
 // Sandbox URL: https://cybqa.pesapal.com
-// Helper to normalize base URL (remove trailing slashes)
+// Helper to normalize base URL (remove trailing slashes and /pesapalv3 if present)
 function normalizeBaseUrl(url: string): string {
-  return url.replace(/\/+$/, '');
+  // Remove trailing slashes
+  let normalized = url.replace(/\/+$/, '');
+  // Remove /pesapalv3 if it's at the end (we'll add it back when constructing URLs)
+  normalized = normalized.replace(/\/pesapalv3$/, '');
+  return normalized;
+}
+
+// Helper to construct Pesapal API URLs consistently
+function getPesapalApiUrl(endpoint: string): string {
+  // Always construct as: baseUrl/pesapalv3/api/{endpoint}
+  // This ensures consistency regardless of how baseUrl is set
+  const base = normalizeBaseUrl(process.env.PESAPAL_BASE_URL || 'https://api.pesapal.com');
+  // Remove leading slash from endpoint if present
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+  return `${base}/pesapalv3/api/${cleanEndpoint}`;
 }
 
 const PESAPAL_CONFIG = {
@@ -59,16 +73,12 @@ async function getPesapalAccessToken(): Promise<string> {
       throw new Error('Pesapal credentials not configured');
     }
 
-    // Handle base URL format - if it already ends with /pesapalv3, use it as-is
-    let authUrl: string;
-    if (PESAPAL_CONFIG.baseUrl.includes('/pesapalv3')) {
-      authUrl = `${PESAPAL_CONFIG.baseUrl}/api/Auth/RequestToken`;
-    } else {
-      authUrl = `${PESAPAL_CONFIG.baseUrl}/pesapalv3/api/Auth/RequestToken`;
-    }
+    // Use the helper function to construct the URL consistently
+    const authUrl = getPesapalApiUrl('Auth/RequestToken');
 
     console.log('🔐 Pesapal Auth Request:', {
       baseUrl: PESAPAL_CONFIG.baseUrl,
+      envBaseUrl: process.env.PESAPAL_BASE_URL,
       authUrl: authUrl,
       hasConsumerKey: !!PESAPAL_CONFIG.consumerKey,
       hasConsumerSecret: !!PESAPAL_CONFIG.consumerSecret,
@@ -119,9 +129,8 @@ async function getPesapalAccessToken(): Promise<string> {
       statusText: err.response?.statusText,
       responseData: err.response?.data,
       baseUrl: PESAPAL_CONFIG.baseUrl,
-      authUrl: PESAPAL_CONFIG.baseUrl.includes('/pesapalv3') 
-        ? `${PESAPAL_CONFIG.baseUrl}/api/Auth/RequestToken`
-        : `${PESAPAL_CONFIG.baseUrl}/pesapalv3/api/Auth/RequestToken`,
+      envBaseUrl: process.env.PESAPAL_BASE_URL,
+      authUrl: getPesapalApiUrl('Auth/RequestToken'),
     });
     
     const errorMessage = err.response?.data?.message || 
@@ -165,16 +174,8 @@ export async function initializePesapalPayment(
       },
     };
 
-    // Handle base URL format - if it already ends with /pesapalv3, use it as-is
-    // Otherwise, append /api/Transactions/SubmitOrderRequest
-    let apiUrl: string;
-    if (PESAPAL_CONFIG.baseUrl.includes('/pesapalv3')) {
-      // Base URL already includes /pesapalv3, append /api/...
-      apiUrl = `${PESAPAL_CONFIG.baseUrl}/api/Transactions/SubmitOrderRequest`;
-    } else {
-      // Base URL is just the domain, construct full path
-      apiUrl = `${PESAPAL_CONFIG.baseUrl}/pesapalv3/api/Transactions/SubmitOrderRequest`;
-    }
+    // Use the helper function to construct the URL consistently
+    const apiUrl = getPesapalApiUrl('Transactions/SubmitOrderRequest');
     
     console.log('📤 Pesapal API Request:', {
       baseUrl: PESAPAL_CONFIG.baseUrl,
@@ -283,13 +284,8 @@ export async function registerPesapalIPN(ipnUrl: string): Promise<{ success: boo
   try {
     const accessToken = await getPesapalAccessToken();
     
-    // Handle base URL format
-    let registerUrl: string;
-    if (PESAPAL_CONFIG.baseUrl.includes('/pesapalv3')) {
-      registerUrl = `${PESAPAL_CONFIG.baseUrl}/api/URLSetup/RegisterIPN`;
-    } else {
-      registerUrl = `${PESAPAL_CONFIG.baseUrl}/pesapalv3/api/URLSetup/RegisterIPN`;
-    }
+    // Use the helper function to construct the URL consistently
+    const registerUrl = getPesapalApiUrl('URLSetup/RegisterIPN');
     
     const response = await axios.post(
       registerUrl,
@@ -339,13 +335,8 @@ export async function verifyPesapalPayment(
   try {
     const accessToken = await getPesapalAccessToken();
     
-    // Handle base URL format
-    let statusUrl: string;
-    if (PESAPAL_CONFIG.baseUrl.includes('/pesapalv3')) {
-      statusUrl = `${PESAPAL_CONFIG.baseUrl}/api/Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`;
-    } else {
-      statusUrl = `${PESAPAL_CONFIG.baseUrl}/pesapalv3/api/Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`;
-    }
+    // Use the helper function to construct the URL consistently
+    const statusUrl = getPesapalApiUrl(`Transactions/GetTransactionStatus?orderTrackingId=${orderTrackingId}`);
     
     const response = await axios.get(
       statusUrl,
