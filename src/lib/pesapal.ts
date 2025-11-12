@@ -14,29 +14,34 @@ function getAppBaseUrl(): string {
 }
 
 // Pesapal Production Configuration
-// Production URL: https://api.pesapal.com
-// Sandbox URL: https://cybqa.pesapal.com
-// Helper to normalize base URL (remove trailing slashes and /pesapalv3 if present)
+// Production URL: https://pay.pesapal.com (uses /v3/api/ path)
+// Sandbox URL: https://cybqa.pesapal.com (uses /pesapalv3/api/ path)
+// Helper to normalize base URL (remove trailing slashes and version paths if present)
 function normalizeBaseUrl(url: string): string {
   // Remove trailing slashes
   let normalized = url.replace(/\/+$/, '');
-  // Remove /pesapalv3 if it's at the end (we'll add it back when constructing URLs)
-  normalized = normalized.replace(/\/pesapalv3$/, '');
+  // Remove version paths if present (we'll add them back based on environment)
+  normalized = normalized.replace(/\/(pesapalv3|v3)$/, '');
   return normalized;
 }
 
 // Helper to construct Pesapal API URLs consistently
 function getPesapalApiUrl(endpoint: string): string {
-  // Always construct as: baseUrl/pesapalv3/api/{endpoint}
-  // This ensures consistency regardless of how baseUrl is set
-  const base = normalizeBaseUrl(process.env.PESAPAL_BASE_URL || 'https://api.pesapal.com');
+  const base = normalizeBaseUrl(process.env.PESAPAL_BASE_URL || 'https://pay.pesapal.com');
   // Remove leading slash from endpoint if present
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  return `${base}/pesapalv3/api/${cleanEndpoint}`;
+  
+  // Determine if we're using production or sandbox based on base URL
+  // Production: https://pay.pesapal.com uses /v3/api/
+  // Sandbox: https://cybqa.pesapal.com uses /pesapalv3/api/
+  const isProduction = base.includes('pay.pesapal.com');
+  const apiPath = isProduction ? 'v3/api' : 'pesapalv3/api';
+  
+  return `${base}/${apiPath}/${cleanEndpoint}`;
 }
 
 const PESAPAL_CONFIG = {
-  baseUrl: normalizeBaseUrl(process.env.PESAPAL_BASE_URL || 'https://api.pesapal.com'), // Production URL (default)
+  baseUrl: normalizeBaseUrl(process.env.PESAPAL_BASE_URL || 'https://pay.pesapal.com'), // Production URL (default)
   consumerKey: process.env.PESAPAL_CONSUMER_KEY,
   consumerSecret: process.env.PESAPAL_CONSUMER_SECRET,
   // Use PESAPAL_CALLBACK_URL if set, otherwise construct from base URL
