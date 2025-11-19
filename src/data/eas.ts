@@ -273,10 +273,25 @@ export function getAllEAs() {
 }
 
 /**
- * Get EA details by name
+ * Get EA details by name (case-insensitive)
  */
 export function getEAByName(name: string): EA | undefined {
-  return EA_DATA[name];
+  // Try exact match first
+  if (EA_DATA[name]) {
+    return EA_DATA[name];
+  }
+  
+  // Try case-insensitive match
+  const nameToFind = name.toLowerCase();
+  const exactKey = Object.keys(EA_DATA).find(
+    key => key.toLowerCase() === nameToFind
+  );
+  
+  if (exactKey) {
+    return EA_DATA[exactKey];
+  }
+  
+  return undefined;
 }
 
 /**
