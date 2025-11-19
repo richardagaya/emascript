@@ -105,12 +105,42 @@ function DashboardContent() {
     // Check authentication and load user's purchased EAs
     const checkAuth = async () => {
       try {
-        const res = await fetch("/api/session");
+        let res = await fetch("/api/session");
+        
+        // If session cookie doesn't exist or is invalid, try to refresh from Firebase auth
         if (!res.ok) {
-          router.push("/login?callbackUrl=/dashboard");
-        } else {
-          // Fetch user's purchased EAs from Firestore
-          const loadEAs = async () => {
+          const { getFirebaseAuth } = await import("@/lib/firebaseClient");
+          const auth = getFirebaseAuth();
+          const user = auth.currentUser;
+          
+          if (user) {
+            // User is still authenticated in Firebase, refresh the session cookie
+            try {
+              const idToken = await user.getIdToken(true);
+              const sessionRes = await fetch("/api/session", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ idToken }),
+              });
+              
+              if (sessionRes.ok) {
+                res = await fetch("/api/session");
+              }
+            } catch (error) {
+              console.error('Failed to refresh session:', error);
+            }
+          }
+          
+          // If still no valid session, redirect to login
+          if (!res.ok) {
+            router.push("/login?callbackUrl=/dashboard");
+            return;
+          }
+        }
+        
+        // Session is valid, load user data
+        // Fetch user's purchased EAs from Firestore
+        const loadEAs = async () => {
             const data = await fetch("/api/user/purchased-eas").then(r => r.json());
             if (data.purchasedEAs) {
               setPurchasedEAs(data.purchasedEAs);
@@ -151,8 +181,7 @@ function DashboardContent() {
             }
           }
           
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       } catch {
         router.push("/login?callbackUrl=/dashboard");
       }
