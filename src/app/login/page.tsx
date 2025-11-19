@@ -80,14 +80,19 @@ function LoginContent() {
         ? await createUserWithEmailAndPassword(auth, email, password)
         : await signInWithEmailAndPassword(auth, email, password);
       const idToken = await cred.user.getIdToken();
-      await fetch("/api/session", {
+      const sessionResponse = await fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken }),
       });
+      
+      if (!sessionResponse.ok) {
+        throw new Error('Failed to create session');
+      }
+      
       router.push(callbackUrl);
     } catch (err) {
-      const error = err as { code?: string };
+      const error = err as { code?: string; message?: string };
       // Provide better error messages
       if (error?.code === 'auth/user-not-found') {
         setError('No account found with this email');
@@ -99,6 +104,8 @@ function LoginContent() {
         setError('Password should be at least 6 characters');
       } else if (error?.code === 'auth/invalid-email') {
         setError('Invalid email address');
+      } else if (error?.message === 'Failed to create session') {
+        setError('Failed to create session. Please try again.');
       } else {
         setError(isSignUp ? 'Failed to create account. Please try again.' : 'Failed to sign in. Please check your credentials.');
       }
