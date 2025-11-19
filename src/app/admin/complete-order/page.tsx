@@ -2,10 +2,22 @@
 
 import { useState } from "react";
 
+interface OrderCompletionResult {
+  success?: boolean;
+  message?: string;
+  warning?: string;
+  emailError?: string;
+  error?: string;
+  details?: string;
+  email?: string;
+  botName?: string;
+  orderId?: string;
+}
+
 export default function CompleteOrderPage() {
   const [orderId, setOrderId] = useState("ORD-1763537215290-2SS88GO");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<OrderCompletionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleComplete = async () => {
@@ -124,8 +136,8 @@ export default function CompleteOrderPage() {
         <div className="mt-6 text-sm text-gray-600 dark:text-gray-400">
           <p className="mb-2"><strong>What this does:</strong></p>
           <ul className="list-disc list-inside space-y-1">
-            <li>Updates order status to "completed"</li>
-            <li>Adds the EA to the user's account</li>
+            <li>Updates order status to &ldquo;completed&rdquo;</li>
+            <li>Adds the EA to the user&apos;s account</li>
             <li>Sends confirmation email</li>
           </ul>
         </div>
