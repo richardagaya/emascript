@@ -12,6 +12,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useAtom(mobileMenuOpenAtom);
   const [authState, setAuthState] = useAtom(authStateAtom);
   const [imageError, setImageError] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -32,15 +33,23 @@ export default function Navbar() {
           // If cookie doesn't exist, set it with the current user's idToken
           if (!checkRes.ok) {
             const idToken = await user.getIdToken();
-            await fetch("/api/session", {
+            const sessionRes = await fetch("/api/session", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ idToken }),
             });
+            if (sessionRes.ok) {
+              setSessionReady(true);
+            }
+          } else {
+            setSessionReady(true);
           }
-        } catch {}
+        } catch {
+          setSessionReady(false);
+        }
       } else {
         setAuthState({ isAuthed: false, displayName: null, photoURL: null });
+        setSessionReady(false);
       }
     });
     return () => {
@@ -62,6 +71,36 @@ export default function Navbar() {
 
   function closeMenu() {
     setIsOpen(false);
+  }
+
+  async function handleDashboardClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (!sessionReady) {
+      e.preventDefault();
+      
+      // Try to refresh the session cookie
+      try {
+        const auth = getFirebaseAuth();
+        const user = auth.currentUser;
+        if (user) {
+          const idToken = await user.getIdToken(true); // Force refresh
+          const sessionRes = await fetch("/api/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+          });
+          
+          if (sessionRes.ok) {
+            window.location.href = '/dashboard';
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to refresh session:', error);
+      }
+      
+      // If we couldn't refresh the session, redirect to login
+      window.location.href = '/login?callbackUrl=/dashboard';
+    }
   }
 
   return (
@@ -91,7 +130,14 @@ export default function Navbar() {
           <a href="#faq" className="hover:underline">FAQ</a>
           {authState.isAuthed ? (
             <>
-              <Link href="/dashboard" className="hover:underline">Dashboard</Link>
+              <Link 
+                href="/dashboard" 
+                className={`hover:underline ${!sessionReady ? 'opacity-50 cursor-wait' : ''}`}
+                onClick={handleDashboardClick}
+                title={!sessionReady ? 'Preparing session...' : 'Go to Dashboard'}
+              >
+                Dashboard
+              </Link>
               <div className="flex items-center gap-2">
                 {authState.photoURL && !imageError ? (
                   <Image 
@@ -144,7 +190,14 @@ export default function Navbar() {
           <a href="#faq" className="hover:underline" onClick={closeMenu}>FAQ</a>
           {authState.isAuthed ? (
             <>
-              <Link href="/dashboard" className="hover:underline" onClick={closeMenu}>Dashboard</Link>
+              <Link 
+                href="/dashboard" 
+                className={`hover:underline ${!sessionReady ? 'opacity-50 cursor-wait' : ''}`}
+                onClick={(e) => { closeMenu(); handleDashboardClick(e); }}
+                title={!sessionReady ? 'Preparing session...' : 'Go to Dashboard'}
+              >
+                Dashboard
+              </Link>
               <div className="flex items-center gap-2">
                 {authState.photoURL && !imageError ? (
                   <Image 
