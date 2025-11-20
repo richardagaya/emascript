@@ -224,13 +224,22 @@ export async function GET(req: NextRequest) {
                 console.error('❌ Error checking/adding EA:', eaError);
               }
               
-              // Try sending email (might have failed before)
-              try {
-                console.log('📧 Attempting to send confirmation email...');
-                await sendConfirmationEmail(orderData!.email, orderData!.botName, merchantReference);
-                console.log('✅ Confirmation email sent');
-              } catch (emailError) {
-                console.error('❌ Email send failed:', emailError);
+              // Try sending email (might have failed before), but only if it hasn't been sent already
+              if (!orderData?.emailSent) {
+                try {
+                  console.log('📧 Attempting to send confirmation email (order already completed)...');
+                  await sendConfirmationEmail(orderData!.email, orderData!.botName, merchantReference);
+                  console.log('✅ Confirmation email sent');
+                  await orderRef.update({
+                    emailSent: true,
+                    emailError: null,
+                    updatedAt: new Date().toISOString(),
+                  });
+                } catch (emailError) {
+                  console.error('❌ Email send failed:', emailError);
+                }
+              } else {
+                console.log('ℹ️  Confirmation email already sent, skipping duplicate send');
               }
             }
           } else {

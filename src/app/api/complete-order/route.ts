@@ -169,11 +169,20 @@ export async function POST(req: NextRequest) {
       orderId
     );
 
-    // Send confirmation email
-    try {
-      await sendConfirmationEmail(orderData!.email, orderData!.botName, orderId);
-    } catch (emailError) {
-      console.error('Email sending failed, but order completed:', emailError);
+    // Send confirmation email only if it hasn't already been sent
+    if (!orderData?.emailSent) {
+      try {
+        await sendConfirmationEmail(orderData!.email, orderData!.botName, orderId);
+        await orderRef.update({
+          emailSent: true,
+          emailError: null,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (emailError) {
+        console.error('Email sending failed, but order completed:', emailError);
+      }
+    } else {
+      console.log('ℹ️  Confirmation email already sent for this order, skipping duplicate send');
     }
 
     console.log(`✅ Order ${orderId} manually completed`);

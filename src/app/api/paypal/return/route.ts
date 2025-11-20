@@ -161,33 +161,37 @@ export async function GET(req: NextRequest) {
         updatedAt: new Date().toISOString(),
       });
 
-      // Send confirmation email with retry logic
-      let emailSuccess = false;
-      let emailError = null;
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          console.log(`📧 Attempt ${attempt}/3: Sending email to ${orderData.email}...`);
-          await sendConfirmationEmail(orderData.email, orderData.botName, orderId);
-          console.log(`✅ Email sent successfully`);
-          emailSuccess = true;
-          break;
-        } catch (emailErr) {
-          emailError = emailErr;
-          console.error(`❌ Attempt ${attempt}/3 failed:`, emailErr);
-          if (attempt < 3) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      // Send confirmation email with retry logic, but only if it hasn't already been sent
+      if (!orderData.emailSent) {
+        let emailSuccess = false;
+        let emailError = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            console.log(`📧 Attempt ${attempt}/3: Sending email to ${orderData.email}...`);
+            await sendConfirmationEmail(orderData.email, orderData.botName, orderId);
+            console.log(`✅ Email sent successfully`);
+            emailSuccess = true;
+            break;
+          } catch (emailErr) {
+            emailError = emailErr;
+            console.error(`❌ Attempt ${attempt}/3 failed:`, emailErr);
+            if (attempt < 3) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
           }
         }
+        
+        // Log email status
+        await orderDoc.ref.update({
+          emailSent: emailSuccess,
+          emailError: emailSuccess ? null : String(emailError),
+          updatedAt: new Date().toISOString(),
+        });
+      } else {
+        console.log('ℹ️  Confirmation email already sent for this PayPal order, skipping duplicate send');
       }
-      
-      // Log email status
-      await orderDoc.ref.update({
-        emailSent: emailSuccess,
-        emailError: emailSuccess ? null : String(emailError),
-        updatedAt: new Date().toISOString(),
-      });
 
-      console.log(`✅ PayPal payment completed for order ${orderId} (EA: ${eaAddSuccess}, Email: ${emailSuccess})`);
+      console.log(`✅ PayPal payment completed for order ${orderId} (EA delivered: ${eaAddSuccess})`);
 
       // Redirect to success page
       return NextResponse.redirect(new URL(`/dashboard?payment=success&orderId=${orderId}`, req.url));

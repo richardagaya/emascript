@@ -83,22 +83,31 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // Send confirmation email
-    try {
-      console.log('📧 Sending confirmation email...');
-      await sendConfirmationEmail(orderData.email, orderData.botName, orderId);
-      console.log('✅ Email sent successfully');
-    } catch (emailError) {
-      console.error('❌ Error sending email:', emailError);
-      return NextResponse.json(
-        { 
-          success: true, 
-          warning: 'EA added but email failed to send',
-          emailError: (emailError as Error).message,
-          orderId 
-        },
-        { status: 200 }
-      );
+    // Send confirmation email ONLY if it hasn't already been sent
+    if (!orderData.emailSent) {
+      try {
+        console.log('📧 Sending confirmation email (manual completion)...');
+        await sendConfirmationEmail(orderData.email, orderData.botName, orderId);
+        console.log('✅ Email sent successfully');
+        await orderRef.update({
+          emailSent: true,
+          emailError: null,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (emailError) {
+        console.error('❌ Error sending email:', emailError);
+        return NextResponse.json(
+          { 
+            success: true, 
+            warning: 'EA added but email failed to send',
+            emailError: (emailError as Error).message,
+            orderId 
+          },
+          { status: 200 }
+        );
+      }
+    } else {
+      console.log('ℹ️  Confirmation email already sent for this order, skipping manual resend');
     }
     
     return NextResponse.json({

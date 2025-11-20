@@ -32,11 +32,13 @@ function DashboardContent() {
 
   const handleDownload = async (eaId: string) => {
     setDownloading(eaId);
+    let downloadStarted = false;
     try {
       const response = await fetch(`/api/download?eaId=${eaId}`);
       const data = await response.json();
 
       if (response.ok && data.downloadUrl) {
+        downloadStarted = true;
         // Create a temporary link and trigger download
         const link = document.createElement('a');
         link.href = data.downloadUrl;
@@ -45,17 +47,29 @@ function DashboardContent() {
         link.click();
         document.body.removeChild(link);
         
-        // Refresh the EA list to update download count
-        const updatedData = await fetch("/api/user/purchased-eas").then(r => r.json());
-        if (updatedData.purchasedEAs) {
-          setPurchasedEAs(updatedData.purchasedEAs);
+        // Try to refresh the EA list to update download count,
+        // but don't scare the user with an error if this fails
+        try {
+          const updatedResponse = await fetch("/api/user/purchased-eas");
+          if (updatedResponse.ok) {
+            const updatedData = await updatedResponse.json();
+            if (updatedData.purchasedEAs) {
+              setPurchasedEAs(updatedData.purchasedEAs);
+            }
+          }
+        } catch (refreshError) {
+          console.error('Failed to refresh purchased EAs after download:', refreshError);
+          // Non-critical: the EA was already downloaded successfully
         }
       } else {
         alert(`Download failed: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Download error:', error);
-      alert('Failed to download EA. Please try again.');
+      // Only show an error if we couldn't even start the download
+      if (!downloadStarted) {
+        alert('Failed to download EA. Please try again.');
+      }
     } finally {
       setDownloading(null);
     }
