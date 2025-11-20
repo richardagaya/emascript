@@ -376,6 +376,18 @@ function LoginContent() {
             </button>
           </form>
 
+          {/* Forgot password */}
+          {!isSignUp && (
+            <div className="mt-3 text-right">
+              <Link
+                href="/reset-password"
+                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+          )}
+
           {/* Toggle Sign Up / Sign In */}
           <div className="mt-6 text-center">
             <button
