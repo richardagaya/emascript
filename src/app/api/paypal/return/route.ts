@@ -117,6 +117,12 @@ export async function GET(req: NextRequest) {
     }
 
     try {
+      // Check if already processed
+      if (orderData.status === 'completed') {
+        console.log(`✅ Order ${orderId} already completed`);
+        return NextResponse.redirect(new URL(`/dashboard?payment=success&orderId=${orderId}`, req.url));
+      }
+      
       // Update order status
       await orderDoc.ref.update({
         status: 'completed',
@@ -125,17 +131,63 @@ export async function GET(req: NextRequest) {
         updatedAt: new Date().toISOString(),
       });
 
-      // Add EA to user's account
-      await addEAToUserAccount(
-        orderData.email,
-        orderData.botName,
-        orderId
-      );
+      // Add EA to user's account with retry logic
+      let eaAddSuccess = false;
+      let eaAddError = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`📦 Attempt ${attempt}/3: Adding EA to ${orderData.email}...`);
+          await addEAToUserAccount(
+            orderData.email,
+            orderData.botName,
+            orderId
+          );
+          console.log(`✅ EA added successfully`);
+          eaAddSuccess = true;
+          break;
+        } catch (eaError) {
+          eaAddError = eaError;
+          console.error(`❌ Attempt ${attempt}/3 failed:`, eaError);
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          }
+        }
+      }
+      
+      // Log EA delivery status
+      await orderDoc.ref.update({
+        eaDelivered: eaAddSuccess,
+        eaDeliveryError: eaAddSuccess ? null : String(eaAddError),
+        updatedAt: new Date().toISOString(),
+      });
 
-      // Send confirmation email
-      await sendConfirmationEmail(orderData.email, orderData.botName, orderId);
+      // Send confirmation email with retry logic
+      let emailSuccess = false;
+      let emailError = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`📧 Attempt ${attempt}/3: Sending email to ${orderData.email}...`);
+          await sendConfirmationEmail(orderData.email, orderData.botName, orderId);
+          console.log(`✅ Email sent successfully`);
+          emailSuccess = true;
+          break;
+        } catch (emailErr) {
+          emailError = emailErr;
+          console.error(`❌ Attempt ${attempt}/3 failed:`, emailErr);
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          }
+        }
+      }
+      
+      // Log email status
+      await orderDoc.ref.update({
+        emailSent: emailSuccess,
+        emailError: emailSuccess ? null : String(emailError),
+        updatedAt: new Date().toISOString(),
+      });
 
-      console.log(`✅ PayPal payment completed for order ${orderId}`);
+      console.log(`✅ PayPal payment completed for order ${orderId} (EA: ${eaAddSuccess}, Email: ${emailSuccess})`);
 
       // Redirect to success page
       return NextResponse.redirect(new URL(`/dashboard?payment=success&orderId=${orderId}`, req.url));

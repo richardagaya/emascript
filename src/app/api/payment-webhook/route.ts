@@ -127,31 +127,63 @@ export async function GET(req: NextRequest) {
               
               console.log('✅ Order status updated to completed');
               
-              // Add EA to user's account (check if already added to avoid duplicates)
-              try {
-                console.log('📦 Adding EA to user account...');
-                await addEAToUserAccount(
-                  orderData!.email,
-                  orderData!.botName,
-                  merchantReference
-                );
-                console.log('✅ EA added to user account successfully');
-              } catch (eaError) {
-                const error = eaError as { message?: string };
-                console.error(`❌ Failed to add EA to user account:`, error?.message || eaError);
-                // Don't throw - continue to send email even if EA addition fails
+              // Add EA to user's account with retry logic
+              let eaAddSuccess = false;
+              let eaAddError = null;
+              for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                  console.log(`📦 Attempt ${attempt}/3: Adding EA to user account...`);
+                  await addEAToUserAccount(
+                    orderData!.email,
+                    orderData!.botName,
+                    merchantReference
+                  );
+                  console.log('✅ EA added to user account successfully');
+                  eaAddSuccess = true;
+                  break;
+                } catch (eaError) {
+                  eaAddError = eaError;
+                  const error = eaError as { message?: string };
+                  console.error(`❌ Attempt ${attempt}/3 failed to add EA:`, error?.message || eaError);
+                  if (attempt < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                  }
+                }
               }
               
-              // Send confirmation email
-              try {
-                console.log('📧 Sending confirmation email...');
-                await sendConfirmationEmail(orderData!.email, orderData!.botName, merchantReference);
-                console.log('✅ Confirmation email sent successfully');
-              } catch (emailError) {
-                const error = emailError as { message?: string };
-                console.error(`❌ Failed to send confirmation email:`, error?.message || emailError);
-                // Don't throw - email failure shouldn't block the process
+              // Log EA delivery status
+              await orderRef.update({
+                eaDelivered: eaAddSuccess,
+                eaDeliveryError: eaAddSuccess ? null : String(eaAddError),
+                updatedAt: new Date().toISOString(),
+              });
+              
+              // Send confirmation email with retry logic
+              let emailSuccess = false;
+              let emailError = null;
+              for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                  console.log(`📧 Attempt ${attempt}/3: Sending confirmation email...`);
+                  await sendConfirmationEmail(orderData!.email, orderData!.botName, merchantReference);
+                  console.log('✅ Confirmation email sent successfully');
+                  emailSuccess = true;
+                  break;
+                } catch (emailErr) {
+                  emailError = emailErr;
+                  const error = emailErr as { message?: string };
+                  console.error(`❌ Attempt ${attempt}/3 failed to send email:`, error?.message || emailErr);
+                  if (attempt < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                  }
+                }
               }
+              
+              // Log email status
+              await orderRef.update({
+                emailSent: emailSuccess,
+                emailError: emailSuccess ? null : String(emailError),
+                updatedAt: new Date().toISOString(),
+              });
             } else {
               // Order already completed, but check if EA/email need to be sent
               console.log('ℹ️  Order already marked as completed');
@@ -381,33 +413,104 @@ export async function POST(req: NextRequest) {
 
     // Update order status based on payment status
     if (status === 'success' || status === 'completed') {
+      console.log(`💰 Processing successful payment for order ${orderId}`);
       const timestamp = new Date().toISOString();
       
+      // Check if order is already completed
+      if (orderData?.status === 'completed') {
+        console.log(`✅ Order ${orderId} already completed, skipping duplicate processing`);
+        return NextResponse.json({
+          success: true,
+          message: 'Payment already processed',
+        }, { status: 200 });
+      }
+      
       // Update order status to completed
+      try {
+        await orderRef.update({
+          status: 'completed',
+          transactionId,
+          paidAt: timestamp,
+          updatedAt: timestamp,
+        });
+        console.log(`✅ Order ${orderId} status updated to completed`);
+      } catch (updateError) {
+        console.error(`❌ Failed to update order status:`, updateError);
+        throw updateError;
+      }
+
+      // Add EA to user's purchased EAs with retry logic
+      let eaAddSuccess = false;
+      let eaAddError = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`📦 Attempt ${attempt}/3: Adding EA to user account...`);
+          await addEAToUserAccount(
+            orderData!.email,
+            orderData!.botName,
+            orderId
+          );
+          console.log(`✅ EA successfully added to ${orderData!.email}`);
+          eaAddSuccess = true;
+          break;
+        } catch (eaError) {
+          eaAddError = eaError;
+          console.error(`❌ Attempt ${attempt}/3 failed to add EA:`, eaError);
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Wait 1s, 2s, 3s
+          }
+        }
+      }
+      
+      // Log EA delivery status in order document
       await orderRef.update({
-        status: 'completed',
-        transactionId,
-        paidAt: timestamp,
-        updatedAt: timestamp,
+        eaDelivered: eaAddSuccess,
+        eaDeliveryError: eaAddSuccess ? null : String(eaAddError),
+        updatedAt: new Date().toISOString(),
       });
 
-      // Add EA to user's purchased EAs
-      await addEAToUserAccount(
-        orderData!.email,
-        orderData!.botName,
-        orderId
-      );
+      // Send confirmation email with retry logic
+      let emailSuccess = false;
+      let emailError = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`📧 Attempt ${attempt}/3: Sending confirmation email...`);
+          await sendConfirmationEmail(orderData!.email, orderData!.botName, orderId);
+          console.log(`✅ Confirmation email sent to ${orderData!.email}`);
+          emailSuccess = true;
+          break;
+        } catch (emailErr) {
+          emailError = emailErr;
+          console.error(`❌ Attempt ${attempt}/3 failed to send email:`, emailErr);
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          }
+        }
+      }
+      
+      // Log email status in order document
+      await orderRef.update({
+        emailSent: emailSuccess,
+        emailError: emailSuccess ? null : String(emailError),
+        updatedAt: new Date().toISOString(),
+      });
 
-      // Send confirmation email
-      await sendConfirmationEmail(orderData!.email, orderData!.botName, orderId);
-
+      // Return success even if EA/email failed (they can be retried manually)
+      const warnings = [];
+      if (!eaAddSuccess) warnings.push('EA delivery failed');
+      if (!emailSuccess) warnings.push('Email failed');
+      
       return NextResponse.json({
         success: true,
         message: 'Payment processed successfully',
+        warnings: warnings.length > 0 ? warnings : undefined,
+        eaDelivered: eaAddSuccess,
+        emailSent: emailSuccess,
       }, { status: 200 });
 
     } else {
       // Payment failed
+      console.log(`❌ Payment failed for order ${orderId}: ${body.failureReason || 'Unknown reason'}`);
       await orderRef.update({
         status: 'failed',
         failureReason: body.failureReason || 'Payment failed',
