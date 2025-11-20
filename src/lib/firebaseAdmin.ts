@@ -89,13 +89,16 @@ export const adminDb = new Proxy({} as Firestore, {
   get(_target, prop) {
     if (!_adminDb) {
       try {
-        // Use default Firestore database for the configured project
-        // Passing only the app instance lets the Admin SDK connect to
-        // whatever primary database exists for this project, avoiding
-        // issues with incorrect or missing database IDs.
+        // Explicitly choose the Firestore database ID.
+        // Your Firebase console shows the database id as "fxpro" (not "(default)"),
+        // so we default to that unless FIREBASE_DATABASE_ID is set.
+        const databaseId = process.env.FIREBASE_DATABASE_ID || 'fxpro';
         const app = getAdminApp();
-        _adminDb = getFirestore(app);
-        console.log('✅ Firebase Admin Firestore initialized for project:', process.env.FIREBASE_ADMIN_PROJECT_ID);
+        _adminDb = getFirestore(app, databaseId);
+        console.log('✅ Firebase Admin Firestore initialized', {
+          projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+          databaseId,
+        });
       } catch (error) {
         console.error('Failed to get Firebase Admin Firestore:', error);
         throw error;
