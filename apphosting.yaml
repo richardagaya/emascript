@@ -7,16 +7,43 @@ runConfig:
   memory: 512Mi
 
 env:
+  # Firebase Client Configuration
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     secret: NEXT_PUBLIC_FIREBASE_API_KEY
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     secret: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
     secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-  # Optional app URL
+  
+  # Firebase Admin SDK Configuration
+  - variable: FIREBASE_ADMIN_PROJECT_ID
+    secret: FIREBASE_ADMIN_PROJECT_ID
+  - variable: FIREBASE_ADMIN_CLIENT_EMAIL
+    secret: FIREBASE_ADMIN_CLIENT_EMAIL
+  - variable: FIREBASE_ADMIN_PRIVATE_KEY
+    secret: FIREBASE_ADMIN_PRIVATE_KEY
+  
+  # Firestore Database Configuration
+  - variable: FIRESTORE_DATABASE_ID
+    secret: FIRESTORE_DATABASE_ID
+  
+  # SMTP Email Configuration
+  - variable: SMTP_HOST
+    secret: SMTP_HOST
+  - variable: SMTP_PORT
+    secret: SMTP_PORT
+  - variable: SMTP_USER
+    secret: SMTP_USER
+  - variable: SMTP_PASSWORD
+    secret: SMTP_PASSWORD
+  - variable: FROM_EMAIL
+    secret: FROM_EMAIL
+  
+  # App Configuration
   - variable: NEXT_PUBLIC_APP_URL
     secret: NEXT_PUBLIC_APP_URL
-  # Pesapal (if used by client)
+  
+  # Pesapal Payment Configuration
   - variable: PESAPAL_CONSUMER_KEY
     secret: PESAPAL_CONSUMER_KEY
   - variable: PESAPAL_CONSUMER_SECRET
