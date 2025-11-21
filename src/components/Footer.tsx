@@ -16,7 +16,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="flex items-center gap-5 justify-center sm:justify-end">
-          <a href="https://www.tiktok.com/@yourhandle" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="opacity-80 hover:opacity-100 transition-opacity">
+          <a href="https://www.tiktok.com/@akavanta_" target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="opacity-80 hover:opacity-100 transition-opacity">
             <FontAwesomeIcon icon={faTiktok} className="h-4 w-4" />
           </a>
           <a href="https://x.com/yourhandle" target="_blank" rel="noopener noreferrer" aria-label="X" className="opacity-80 hover:opacity-100 transition-opacity">
@@ -25,7 +25,7 @@ export default function Footer() {
           <a href="https://facebook.com/yourpage" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="opacity-80 hover:opacity-100 transition-opacity">
             <FontAwesomeIcon icon={faFacebookF} className="h-4 w-4" />
           </a>
-          <a href="https://instagram.com/yourhandle" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="opacity-80 hover:opacity-100 transition-opacity">
+          <a href="https://www.instagram.com/akavanta/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="opacity-80 hover:opacity-100 transition-opacity">
             <FontAwesomeIcon icon={faInstagram} className="h-4 w-4" />
           </a>
         </div>
