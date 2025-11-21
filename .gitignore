@@ -40,6 +40,12 @@ fxpro-2dc0c-2a1fe811afe7.json
 # vercel
 .vercel
 
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
