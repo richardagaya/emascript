@@ -110,7 +110,7 @@ export default function Marketplace() {
                 </p>
                 
                 <div className="flex items-center justify-between">
-                  <div className="text-2xl font-bold">KES {bot.price.toFixed(2)}</div>
+                  <div className="text-2xl font-bold">${bot.price.toFixed(2)}</div>
                   <div className="flex gap-2">
                     <button
                       className={`px-4 py-2 text-sm rounded-md ${

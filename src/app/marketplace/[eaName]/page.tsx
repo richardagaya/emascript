@@ -151,7 +151,7 @@ export default function EADetailsPage() {
           <div className="lg:col-span-1">
             <div className="bg-white dark:bg-gray-900 rounded-xl border border-black/[.08] dark:border-white/[.145] p-6 sticky top-6">
               <div className="text-center mb-6">
-                <div className="text-4xl font-bold mb-2">KES {eaDetails.price.toFixed(2)}</div>
+                <div className="text-4xl font-bold mb-2">${eaDetails.price.toFixed(2)}</div>
                 <p className="text-sm text-black/60 dark:text-white/60">One-time purchase</p>
               </div>
 

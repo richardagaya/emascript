@@ -153,14 +153,14 @@ function CheckoutContent() {
               <div className="text-right">
                 <p className="text-sm text-gray-600 dark:text-gray-400">Price</p>
                 <p className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">
-                  {eaData ? `KES ${eaData.price.toFixed(2)}` : 'Loading...'}
+                  {eaData ? `$${eaData.price.toFixed(2)}` : 'Loading...'}
                 </p>
               </div>
             </div>
             <div className="flex items-center justify-between pt-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total</span>
               <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {eaData ? `KES ${eaData.price.toFixed(2)}` : 'Loading...'}
+                {eaData ? `$${eaData.price.toFixed(2)}` : 'Loading...'}
               </span>
             </div>
           </div>
